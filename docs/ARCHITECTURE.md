@@ -23,7 +23,7 @@ Browser (phone / desktop)
            │   verifies JWTs against Better Auth's public keys (JWKS); holds no signing secret
            │   └── ai_gateway module: the only code that talks to AI providers (Pydantic AI)
            │
-           ├── workers (same image, one Kamal role per queue): ingestion · generation · verification · media
+           ├── workers (same image, one Kamal role per queue): ingestion · generation · verification · media · maintenance
            │      └── verification sends untrusted code to ─► sandbox (Phase 3): no secrets, no DB, no network
            ├── Postgres 18 + pgvector: module tables, `auth` schema (Better Auth only), DBOS workflows and queues, usage ledger
            └── Object storage: uploads and generated media (local in dev, S3-compatible in staging and production)
@@ -91,8 +91,12 @@ Every AI call in Verdict goes through `ai_gateway`. Nothing else imports a provi
 ## Background work
 - **DBOS** runs durable workflows and queues inside Postgres, with no separate broker. A DBOS SQL function enqueues a workflow atomically with the data it belongs to.
 - **Steps are checkpointed,** with per-step retries and backoff, per-queue concurrency and rate limits, and scheduled workflows.
-- **Queues:** `ingestion`, `generation`, `verification`, `media` (CPU-heavy video rendering) and `maintenance`.
-- **Progress** reaches the UI through Postgres `LISTEN/NOTIFY` and then server-sent events, with no polling.
+- **Queues:** `ingestion`, `generation`, `verification`, `media` (CPU-heavy video rendering) and `maintenance`, each with a concurrency limit across all workers (`verdict/workflows.py`).
+- **Workers:** one per queue, `python -m verdict.worker <queue>`. Each keeps the executor ID `worker-<queue>`, so a restarted worker resumes the workflows it was running.
+- **Every workflow is enqueued on a named queue,** never started directly, so only workers run them; the api only enqueues. A module's workflows live in its `workflows.py`, which every process imports at start.
+- **Versions:** DBOS resumes only work started under the same `WORKFLOWS_VERSION` (`verdict/workflows.py`). Bump it when a release changes a workflow in a way an in-progress run couldn't replay, and let those runs finish before deploying.
+- **Progress** reaches the UI through Postgres `LISTEN/NOTIFY` and then server-sent events. A workflow writes it to a DBOS stream, which is stored, so a late reader still gets every update. A notification wakes the reader at once; it also checks every few seconds in case one is missed.
+- **Server-sent events carry the stream offset as their id,** so a reconnecting browser resumes after the last update it saw. The stream ends with an `end` event giving the workflow's final status.
 
 ## The sandbox service (Phase 3)
 - **What it is:** the only deliberately separate service. It runs and tests AI-generated interactive diagrams and games in a headless browser inside a locked-down container.

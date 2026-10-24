@@ -1,13 +1,16 @@
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Literal
 
+from dbos import DBOS
 from fastapi import FastAPI, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
+from verdict import example, workflows
 from verdict.settings import load_settings
 
 logger = logging.getLogger(__name__)
@@ -22,11 +25,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.engine = create_engine(
         settings.database_url, pool_pre_ping=True, connect_args={"connect_timeout": 5}
     )
+    # In a thread: DBOS's synchronous calls refuse to run inside an event loop.
+    await asyncio.to_thread(workflows.launch, settings, executor_id="api", queues=[])
     yield
+    await asyncio.to_thread(DBOS.destroy)
     app.state.engine.dispose()
 
 
 app = FastAPI(title="Verdict API", lifespan=lifespan)
+app.include_router(example.router)
 
 
 class Health(BaseModel):
