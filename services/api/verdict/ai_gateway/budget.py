@@ -38,10 +38,11 @@ class Limits:
 class Usage:
     tokens: int
     cost_usd: Decimal
-    input_tokens: int
-    output_tokens: int
-    cache_read_tokens: int
-    cache_write_tokens: int
+    # None when the provider reported no breakdown, as for a call settled at its estimate.
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    cache_read_tokens: int | None = None
+    cache_write_tokens: int | None = None
 
 
 class BudgetExceededError(Exception):

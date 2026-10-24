@@ -181,6 +181,20 @@ def test_settling_replaces_the_reservation_with_real_usage(api_engine: Engine) -
         settle(api_engine, reservation, USAGE)
 
 
+def test_a_call_settled_at_its_estimate_keeps_no_breakdown(api_engine: Engine) -> None:
+    reservation = call(api_engine, Limits(tokens_per_user=None, spend_usd=None))
+
+    settle(api_engine, reservation, Usage(tokens=100, cost_usd=Decimal("0.10")))
+
+    with Session(api_engine) as session:
+        row = session.get_one(UsageLedger, reservation)
+        assert (row.tokens, row.cost_usd, row.input_tokens) == (
+            100,
+            Decimal("0.10"),
+            None,
+        )
+
+
 def test_a_rejected_call_releases_its_reservation(api_engine: Engine) -> None:
     limits = Limits(tokens_per_user=100, spend_usd=Decimal("0.10"))
     student = uuid.uuid4()
