@@ -1,5 +1,4 @@
 import shutil
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -9,8 +8,7 @@ from alembic.script import ScriptDirectory
 from sqlalchemy import URL, Connection, Engine, create_engine, text
 from sqlalchemy.exc import ProgrammingError
 
-API = Path(__file__).resolve().parents[1]
-PYPROJECT = API / "pyproject.toml"
+from tests.conftest import API, PYPROJECT, as_api_role, migrate
 
 UNINDEXED_FOREIGN_KEYS = text("""
     SELECT t.relname, c.conname
@@ -41,22 +39,6 @@ PRIMARY_KEYS_WITHOUT_UUIDV7 = text("""
            OR pg_get_expr(d.adbin, d.adrelid) IS DISTINCT FROM 'uuidv7()')
     ORDER BY 1, 2
 """)
-
-
-def as_api_role(url: URL) -> Engine:
-    """Migrations run as the api's role, as they do when deployed."""
-    return create_engine(url, connect_args={"options": "-c role=verdict_api"})
-
-
-def migrate(
-    engine: Engine, pyproject: Path, step: Callable[[Config, str], None], target: str
-) -> None:
-    # connect(), not begin(): Alembic must own the transaction, as it does when deployed,
-    # or a migration's autocommit_block() (CREATE INDEX CONCURRENTLY) fails here.
-    with engine.connect() as connection:
-        config = Config(toml_file=pyproject)
-        config.attributes["connection"] = connection
-        step(config, target)
 
 
 def round_trip(engine: Engine, pyproject: Path) -> None:
