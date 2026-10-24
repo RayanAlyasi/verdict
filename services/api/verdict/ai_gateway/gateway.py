@@ -43,6 +43,8 @@ OVERHEAD_TOKENS = 1_000
 # Longer answers make the Anthropic SDK stream, and an error part-way through a stream can carry
 # a 4xx status after the request was billed.
 MAX_OUTPUT_TOKENS = 16_000
+# The answer and one repair. The estimate assumes no more.
+REQUEST_LIMIT = 2
 
 FAKE_MODEL = "test:fake"
 # Priced like a real model, so budget limits apply to fake calls too.
@@ -164,9 +166,8 @@ class Gateway:
                 result = await agent.run(
                     prompt,
                     model_settings={"max_tokens": max_output_tokens},
-                    # Two requests at most, the answer and its repair, as the estimate assumes.
                     # Without this, a reply that skips the output tool gets retries of its own.
-                    usage_limits=UsageLimits(request_limit=2),
+                    usage_limits=UsageLimits(request_limit=REQUEST_LIMIT),
                     metadata={
                         "role": role.value,
                         "feature": feature,
@@ -184,7 +185,12 @@ class Gateway:
                     settle(self._engine, reservation, estimate)
                 raise
             except (UnexpectedModelBehavior, UsageLimitExceeded) as error:
-                settle(self._engine, reservation, _usage(info, messages))
+                # Fewer responses than requests means one failed in flight, such as a reply that
+                # couldn't be parsed; it may have been billed, so the estimate stands.
+                answered = len(_responses(messages)) == REQUEST_LIMIT
+                billed = _usage(info, messages)
+                exact = isinstance(error, UsageLimitExceeded) or answered
+                settle(self._engine, reservation, billed if exact else estimate)
                 reason: Literal["invalid", "refused"] = (
                     "refused" if isinstance(error, ContentFilterError) else "invalid"
                 )

@@ -1,7 +1,6 @@
 import asyncio
 import threading
 import uuid
-from collections.abc import Callable
 from decimal import Decimal
 from typing import Any
 
@@ -12,7 +11,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from pydantic import BaseModel, SecretStr
-from pydantic_ai.exceptions import ModelHTTPError
+from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.function import AgentInfo, FunctionModel
@@ -48,7 +47,6 @@ VALID = {"text": "What is chlorophyll for?", "answer": 1}
 INVALID = {"text": "What is chlorophyll for?", "answer": "many"}
 
 Reply = dict[str, Any] | str
-ModelFunction = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 
 
 class Question(BaseModel):
@@ -67,54 +65,53 @@ def settings(**overrides: Any) -> Settings:
     return Settings(**(values | overrides))
 
 
-def replying(*replies: Reply, calls: list[int] | None = None) -> FunctionModel:
-    """A fake model giving each reply in turn (tool arguments, or prose that skips the tool).
+def respond_with(info: AgentInfo, reply: Reply) -> ModelResponse:
+    """Tool arguments, or prose that skips the output tool; 1,000 tokens in and 100 out."""
+    part = (
+        TextPart(reply)
+        if isinstance(reply, str)
+        else ToolCallPart(info.output_tools[0].name, reply)
+    )
+    return ModelResponse(
+        parts=[part], usage=RequestUsage(input_tokens=1000, output_tokens=100)
+    )
 
-    Each reply reports 1,000 input and 100 output tokens. `calls` counts the requests.
-    """
+
+def replying(*replies: Reply, calls: list[int] | None = None) -> FunctionModel:
+    """A fake model giving each reply in turn, then repeating the last. `calls` counts requests."""
     remaining = list(replies)
 
     def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         if calls is not None:
             calls.append(1)
-        reply = remaining.pop(0) if len(remaining) > 1 else remaining[0]
-        part = (
-            TextPart(reply)
-            if isinstance(reply, str)
-            else ToolCallPart(info.output_tools[0].name, reply)
-        )
-        return ModelResponse(
-            parts=[part], usage=RequestUsage(input_tokens=1000, output_tokens=100)
+        return respond_with(
+            info, remaining.pop(0) if len(remaining) > 1 else remaining[0]
         )
 
     return FunctionModel(respond)
 
 
-def failing(
-    error: BaseException, after: Reply | None = None
-) -> Callable[[list[ModelMessage], AgentInfo], ModelResponse]:
+def failing(error: BaseException, after: Reply | None = None) -> FunctionModel:
     """A fake model that raises `error`, on its second request if `after` is its first reply."""
-    first = replying(after) if after is not None else None
     requests = 0
 
     def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         nonlocal requests
         requests += 1
-        if first is not None and requests == 1:
-            assert first.function is not None
-            return first.function(messages, info)  # type: ignore[return-value]
+        if after is not None and requests == 1:
+            return respond_with(info, after)
         raise error
 
-    return respond
+    return FunctionModel(respond)
 
 
-async def ask(gateway: Gateway) -> Question:
+async def ask(gateway: Gateway, student: uuid.UUID | None = None) -> Question:
     return await gateway.complete(
         role=Role.GENERATE,
         output_type=Question,
         instructions=INSTRUCTIONS,
         prompt=PROMPT,
-        user_id=uuid.uuid4(),
+        user_id=student or uuid.uuid4(),
         course_id=None,
         feature="test",
     )
@@ -219,17 +216,68 @@ async def test_a_reply_that_skips_the_output_tool_still_gets_only_one_repair(
 
     assert len(calls) == 2
     [row] = ledger(api_engine)
+    assert (row.tokens, row.cost_usd) == (2200, Decimal("0.002200"))
     assert row.tokens <= estimate().tokens
-    assert row.cost_usd <= estimate().cost_usd
+
+
+@pytest.mark.parametrize("after", [None, INVALID], ids=["first reply", "repair"])
+async def test_a_reply_that_cant_be_read_settles_at_the_estimate(
+    api_engine: Engine, after: Reply | None
+) -> None:
+    unreadable = UnexpectedModelBehavior("Received an empty model response")
+    gateway = Gateway(
+        api_engine, settings(), fake_model=failing(unreadable, after=after)
+    )
+
+    with pytest.raises(OutputInvalidError):
+        await ask(gateway)
+
+    [row] = ledger(api_engine)
+    assert (row.tokens, row.cost_usd) == (estimate().tokens, estimate().cost_usd)
+
+
+async def test_twenty_gateway_calls_at_once_against_limits_that_fit_five(
+    api_engine: Engine,
+) -> None:
+    per_call = estimate()
+    limits = settings(
+        ai_daily_token_limit_per_user=5 * per_call.tokens,
+        ai_daily_spend_limit_usd=5 * per_call.cost_usd,
+    )
+    answering = 0
+    finish = asyncio.Event()
+
+    async def answer_when_told(
+        messages: list[ModelMessage], info: AgentInfo
+    ) -> ModelResponse:
+        nonlocal answering
+        answering += 1
+        await finish.wait()
+        return respond_with(info, VALID)
+
+    gateway = Gateway(api_engine, limits, fake_model=FunctionModel(answer_when_told))
+    student = uuid.uuid4()
+    calls = [asyncio.create_task(ask(gateway, student)) for _ in range(20)]
+    # Hold every reserved call in the model until all 20 have reserved or been refused, so no
+    # settlement frees budget early.
+    with anyio.fail_after(10):
+        while answering + sum(call.done() for call in calls) < 20:
+            await asyncio.sleep(0.01)
+    finish.set()
+    results = await asyncio.gather(*calls, return_exceptions=True)
+
+    assert sum(isinstance(result, Question) for result in results) == 5
+    assert all(isinstance(result, Question | BudgetExceededError) for result in results)
+    rows = ledger(api_engine)
+    assert sum(row.tokens for row in rows) <= 5 * per_call.tokens
+    assert sum(row.cost_usd for row in rows) <= 5 * per_call.cost_usd
 
 
 async def test_a_request_the_provider_rejected_costs_nothing(
     api_engine: Engine,
 ) -> None:
     rejected = ModelHTTPError(status_code=400, model_name="fake", body="bad request")
-    gateway = Gateway(
-        api_engine, settings(), fake_model=FunctionModel(failing(rejected))
-    )
+    gateway = Gateway(api_engine, settings(), fake_model=failing(rejected))
 
     with pytest.raises(ModelHTTPError):
         await ask(gateway)
@@ -241,7 +289,7 @@ async def test_a_rejected_repair_still_charges_the_answer_before_it(
     api_engine: Engine,
 ) -> None:
     rate_limited = ModelHTTPError(status_code=429, model_name="fake", body="slow down")
-    model = FunctionModel(failing(rate_limited, after=INVALID))
+    model = failing(rate_limited, after=INVALID)
 
     with pytest.raises(ModelHTTPError):
         await ask(Gateway(api_engine, settings(), fake_model=model))
@@ -258,7 +306,7 @@ async def test_a_rejected_repair_still_charges_the_answer_before_it(
 async def test_a_call_that_may_have_been_billed_settles_at_its_estimate(
     api_engine: Engine, error: BaseException
 ) -> None:
-    gateway = Gateway(api_engine, settings(), fake_model=FunctionModel(failing(error)))
+    gateway = Gateway(api_engine, settings(), fake_model=failing(error))
 
     with pytest.raises(type(error)):
         await ask(gateway)
