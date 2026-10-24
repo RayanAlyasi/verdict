@@ -23,6 +23,11 @@ class Settings(BaseSettings):
         description="the api role's postgresql+psycopg:// URL; "
         "docker compose provides one locally (see .env.example)"
     )
+    ai_daily_token_limit_per_user: int = Field(
+        default=200_000,
+        ge=0,
+        description="each student's daily AI token limit, for example 200000",
+    )
     ai_daily_spend_limit_usd: Decimal | None = Field(
         default=None,
         ge=0,
