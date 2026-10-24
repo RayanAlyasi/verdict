@@ -1,7 +1,8 @@
+import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
 import { expect, test } from "vitest";
 
-const eslint = new ESLint({ cwd: new URL("..", import.meta.url).pathname });
+const eslint = new ESLint({ cwd: fileURLToPath(new URL("..", import.meta.url)) });
 
 async function boundaryErrors(code: string, filePath: string) {
   const [result] = await eslint.lintText(code, { filePath });
@@ -36,8 +37,10 @@ test("components/ui can't reach pages, feature components or the API", async () 
 });
 
 test("components/ui can't load feature code with a dynamic import", async () => {
-  const code = 'export const load = () => import("@/app/page");\n';
-  expect(await boundaryErrors(code, "components/ui/Example.tsx")).toHaveLength(1);
+  for (const source of ['"@/app/page"', "`@/app/page`", "page"]) {
+    const code = `const page = "@/app/page";\nexport const load = () => import(${source});\n`;
+    expect(await boundaryErrors(code, "components/ui/Example.tsx"), source).toHaveLength(1);
+  }
 });
 
 test("components/ui can import its own pieces and shared helpers, and features can import ui", async () => {

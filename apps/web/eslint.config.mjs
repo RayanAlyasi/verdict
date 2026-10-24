@@ -33,6 +33,10 @@ export default defineConfig([
           selector: `ImportExpression[source.value=/${UI_FORBIDDEN.replaceAll("/", "\\/")}/]`,
           message: UI_MESSAGE,
         },
+        {
+          selector: "ImportExpression[source.type!='Literal']",
+          message: "In components/ui, import() takes a plain string, so the boundary can check it.",
+        },
       ],
     },
   },

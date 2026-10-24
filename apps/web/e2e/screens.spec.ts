@@ -1,5 +1,5 @@
 import path from "node:path";
-import { test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { ROUTES } from "./routes";
 
 // For the ui-reviewer agent, which looks for artifacts/screens/<screen>-<390|1440>-<en|ar>.png.
@@ -25,7 +25,8 @@ for (const device of DEVICES) {
 
     for (const route of ROUTES) {
       test(route.name, async ({ page }) => {
-        await page.goto(route.path);
+        const response = await page.goto(route.path);
+        expect(response?.status(), `${route.path} answered`).toBeLessThan(400);
         await page.evaluate(() => document.fonts.ready);
         await page.screenshot({
           path: path.join(SCREENS, `${route.name}-${device.width}-en.png`),

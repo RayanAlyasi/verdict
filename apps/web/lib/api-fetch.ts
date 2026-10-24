@@ -3,8 +3,10 @@
 export async function apiFetch<T>(path: string, options: RequestInit): Promise<T> {
   const response = await fetch(`${baseUrl()}${path}`, options);
   const body = [204, 205, 304].includes(response.status) ? null : await response.text();
+  // A proxy's error page isn't JSON; parsing it would replace the status with a SyntaxError.
+  const json = response.headers.get("content-type")?.includes("json") ?? false;
   return {
-    data: body ? JSON.parse(body) : {},
+    data: body && json ? JSON.parse(body) : (body ?? {}),
     status: response.status,
     headers: response.headers,
   } as T;
