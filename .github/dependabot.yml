@@ -16,3 +16,12 @@ updates:
     cooldown: { default-days: 7 }
     commit-message: { prefix: chore, include: scope }
     labels: ["dependencies"]
+  - package-ecosystem: uv
+    directory: "/services/api"
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: chore, include: scope }
+    labels: ["dependencies"]
+    groups:
+      python:
+        update-types: [minor, patch]

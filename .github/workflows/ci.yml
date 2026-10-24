@@ -44,9 +44,10 @@ jobs:
           touches() { grep -qE "$1" <<<"$changed" && echo true || echo false; }
           ci='\.github/workflows/ci\.yml$'
           web=false; [ "$web_exists" = true ] && [ "$(touches "^(apps/web/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|\.node-version$|$ci)")" = true ] && web=true
-          api=false; [ "$api_exists" = true ] && [ "$(touches "^(services/api/|\.python-version$|$ci)")" = true ] && api=true
+          api=false; [ "$api_exists" = true ] && [ "$(touches "^(services/api/|config/db/|$ci)")" = true ] && api=true
           full=false; [ "$web_exists" = true ] && [ "$api_exists" = true ] && { [ "$web" = true ] || [ "$api" = true ]; } && full=true
-          ai=false; [ "$api_exists" = true ] && [ "$(touches '^services/api/(verdict/(ai_gateway|generation|verification|ingestion|course_map)/|evals/)')" = true ] && ai=true
+          # evals waits for an approval, so it stays off until the suite exists.
+          ai=false; [ "$api_exists" = true ] && [ -d services/api/evals ] && [ "$(touches '^services/api/(verdict/(ai_gateway|generation|verification|ingestion|course_map)/|evals/)')" = true ] && ai=true
           scripts=$(touches "(^scripts/|\.sh$|\.md$|^\.github/workflows/)")
 
           { echo "web=$web"; echo "api=$api"; echo "full=$full"; echo "ai=$ai"; echo "scripts=$scripts"; echo "deployable=$deployable"; } | tee -a "$GITHUB_OUTPUT"
@@ -95,8 +96,7 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U verdict" --health-interval 5s --health-retries 10
     env:
-      DATABASE_URL: postgresql+psycopg://verdict:verdict@localhost:5432/verdict_test
-      APP_ENV: test
+      TEST_ADMIN_DATABASE_URL: postgresql+psycopg://verdict:verdict@localhost:5432/verdict_test
     defaults:
       run:
         working-directory: services/api
@@ -160,6 +160,7 @@ jobs:
       DATABASE_URL: postgresql+psycopg://verdict:verdict@localhost:5432/verdict
       AUTH_DATABASE_URL: postgresql://verdict:verdict@localhost:5432/verdict
       APP_ENV: test
+      DEPLOYMENT_MODE: hosted
       BETTER_AUTH_SECRET: ci-only-not-a-secret
       AI_PROVIDER: fake
       AI_DAILY_SPEND_LIMIT_USD: "1"

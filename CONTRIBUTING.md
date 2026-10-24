@@ -46,7 +46,7 @@ You sign once; the `cla` check then passes on all your pull requests.
 5. **Run the checks** for what you changed:
    ```bash
    pnpm lint && pnpm typecheck && pnpm test     # web
-   uv run --project services/api ruff check . && uv run --project services/api mypy . && uv run --project services/api pytest   # api
+   uv run --directory services/api ruff check . && uv run --directory services/api mypy . && uv run --directory services/api pytest   # api
    ```
 6. **Title the pull request** as a [Conventional Commit](https://www.conventionalcommits.org/), for example `feat(web): add the exam picker`. It becomes the commit on `main`.
 
