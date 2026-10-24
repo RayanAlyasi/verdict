@@ -1,10 +1,14 @@
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import ExitStack
+from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Any
 
 import pytest
-from sqlalchemy import Engine, func, select, text
+from sqlalchemy import Engine, create_engine, func, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from verdict.ai_gateway.budget import (
@@ -53,6 +57,15 @@ def ledger_rows(engine: Engine) -> int:
         return session.scalar(select(func.count()).select_from(UsageLedger)) or 0
 
 
+def with_session_settings(engine: Engine, settings: str, **kwargs: Any) -> Engine:
+    """The same database as `engine`, acting as the api role, with extra session settings."""
+    return create_engine(
+        engine.url,
+        connect_args={"options": f"-c role=verdict_api {settings}"},
+        **kwargs,
+    )
+
+
 @pytest.mark.parametrize(
     ("limits", "same_student"),
     [
@@ -62,22 +75,33 @@ def ledger_rows(engine: Engine) -> int:
     ],
     ids=["token limit", "spend cap", "both"],
 )
+@pytest.mark.parametrize(
+    "engine_isolation", ["read committed", "repeatable read"], ids=str
+)
 def test_twenty_parallel_calls_against_limits_that_fit_five(
-    api_engine: Engine, limits: Limits, same_student: bool
+    api_engine: Engine, limits: Limits, same_student: bool, engine_isolation: str
 ) -> None:
+    engine = with_session_settings(
+        api_engine, "", pool_size=25, isolation_level=engine_isolation.upper()
+    )
+    # Open every connection before the start, so the 20 calls really overlap.
+    with ExitStack() as connections:
+        for _ in range(20):
+            connections.enter_context(engine.connect())
     student = uuid.uuid4()
     start = threading.Barrier(20)
 
     def attempt(_: int) -> bool:
         start.wait()
         try:
-            call(api_engine, limits, user_id=student if same_student else None)
+            call(engine, limits, user_id=student if same_student else None)
         except BudgetExceededError:
             return False
         return True
 
     with ThreadPoolExecutor(max_workers=20) as pool:
         results = list(pool.map(attempt, range(20)))
+    engine.dispose()
 
     assert results.count(True) == 5
     with Session(api_engine) as session:
@@ -130,6 +154,11 @@ def test_one_students_tokens_dont_count_against_another(api_engine: Engine) -> N
     assert ledger_rows(api_engine) == 2
 
 
+def test_a_negative_estimate_is_refused(api_engine: Engine) -> None:
+    with pytest.raises(IntegrityError, match="ck_usage_ledger_not_negative"):
+        call(api_engine, Limits(tokens_per_user=100, spend_usd=None), tokens=-100)
+
+
 def test_settling_replaces_the_reservation_with_real_usage(api_engine: Engine) -> None:
     limits = Limits(tokens_per_user=100, spend_usd=Decimal("0.10"))
     student = uuid.uuid4()
@@ -152,7 +181,7 @@ def test_settling_replaces_the_reservation_with_real_usage(api_engine: Engine) -
         settle(api_engine, reservation, USAGE)
 
 
-def test_a_failed_call_releases_its_reservation(api_engine: Engine) -> None:
+def test_a_rejected_call_releases_its_reservation(api_engine: Engine) -> None:
     limits = Limits(tokens_per_user=100, spend_usd=Decimal("0.10"))
     student = uuid.uuid4()
     reservation = call(api_engine, limits, user_id=student, tokens=100, cost="0.10")
@@ -162,6 +191,26 @@ def test_a_failed_call_releases_its_reservation(api_engine: Engine) -> None:
     release(api_engine, reservation)
 
     call(api_engine, limits, user_id=student, tokens=100, cost="0.10")
+
+
+def test_releasing_a_settled_call_keeps_its_spend(api_engine: Engine) -> None:
+    reservation = call(api_engine, Limits(tokens_per_user=None, spend_usd=None))
+    settle(api_engine, reservation, USAGE)
+
+    release(api_engine, reservation)
+
+    with Session(api_engine) as session:
+        assert session.get_one(UsageLedger, reservation).cost_usd == Decimal("0.04")
+
+
+@pytest.mark.parametrize("zone", ["Etc/GMT-14", "Etc/GMT+12"])
+def test_reservations_count_against_the_utc_day(api_engine: Engine, zone: str) -> None:
+    # 14 hours ahead of and 12 behind UTC: at any moment, at least one is on another date.
+    engine = with_session_settings(api_engine, f"-c TimeZone={zone}")
+    reservation = call(engine, Limits(tokens_per_user=None, spend_usd=None))
+    engine.dispose()
+    with Session(api_engine) as session:
+        assert session.get_one(UsageLedger, reservation).day == datetime.now(UTC).date()
 
 
 def test_reservations_left_from_yesterday_dont_count_today(api_engine: Engine) -> None:

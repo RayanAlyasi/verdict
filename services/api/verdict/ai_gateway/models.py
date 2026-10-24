@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Index, Numeric, func
+from sqlalchemy import BigInteger, CheckConstraint, Index, Numeric, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from verdict.db import Base, UUIDv7PrimaryKey
@@ -12,7 +12,11 @@ class UsageLedger(Base):
     """One row per AI call: a reservation until `settled_at` is set, then the call's real usage."""
 
     __tablename__ = "usage_ledger"
-    __table_args__ = (Index(None, "day", "user_id"),)
+    __table_args__ = (
+        Index(None, "day", "user_id"),
+        # A negative estimate would hand every student extra headroom.
+        CheckConstraint("tokens >= 0 AND cost_usd >= 0", name="not_negative"),
+    )
 
     id: Mapped[UUIDv7PrimaryKey]
     # The UTC day whose limits the call counts against.

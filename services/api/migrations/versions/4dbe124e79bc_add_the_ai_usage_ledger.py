@@ -39,6 +39,9 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("settled_at", sa.DateTime(timezone=True), nullable=True),
+        sa.CheckConstraint(
+            "tokens >= 0 AND cost_usd >= 0", name=op.f("ck_usage_ledger_not_negative")
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_usage_ledger")),
     )
     op.create_index(

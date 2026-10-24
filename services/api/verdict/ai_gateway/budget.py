@@ -1,8 +1,11 @@
 """Daily AI budgets that parallel calls can't overspend.
 
-Each call reserves its estimate before it runs, then settles its real usage or releases the
-reservation if it fails. Estimates must be upper bounds (all input tokens plus the call's maximum
-output tokens), so settling never pushes the ledger past a limit.
+Each call reserves its estimate before it runs, then settles its real usage. Estimates must be
+upper bounds, so settling never pushes the ledger past a limit: all input tokens priced at the
+model's highest input rate (cache writes cost more than plain input), plus the maximum output.
+
+Release a reservation only when the provider never accepted the request. A call that may have been
+billed (a timeout or a broken stream) settles at its estimate instead.
 """
 
 import logging
@@ -25,7 +28,7 @@ BUDGET_LOCK = 0x61690001
 
 @dataclass(frozen=True)
 class Limits:
-    # AI_DAILY_TOKEN_LIMIT_PER_USER; None means no limit.
+    # AI_DAILY_TOKEN_LIMIT_PER_USER; None means no limit, as when students pay with their own keys.
     tokens_per_user: int | None
     # AI_DAILY_SPEND_LIMIT_USD, shared by every student; None means no cap.
     spend_usd: Decimal | None
@@ -60,7 +63,10 @@ def reserve(
     limits: Limits,
 ) -> uuid.UUID:
     """Reserve a call's estimate against every limit at once, or reserve nothing."""
-    with Session(engine) as session, session.begin():
+    # READ COMMITTED whatever the engine's default: under REPEATABLE READ the snapshot is taken
+    # before the lock, so each reservation would read totals from before the previous one.
+    read_committed = engine.execution_options(isolation_level="READ COMMITTED")
+    with Session(read_committed) as session, session.begin():
         day: date = session.execute(
             text("SELECT (now() AT TIME ZONE 'UTC')::date")
         ).scalar_one()
@@ -109,7 +115,14 @@ def settle(engine: Engine, reservation_id: uuid.UUID, usage: Usage) -> None:
         if row is None or row.settled_at is not None:
             raise LookupError(f"No open reservation {reservation_id}")
         if usage.tokens > row.tokens or usage.cost_usd > row.cost_usd:
-            logger.warning("AI call %s used more than it reserved", reservation_id)
+            logger.warning(
+                "AI call %s used more than it reserved: %d tokens and $%s, reserved %d and $%s",
+                reservation_id,
+                usage.tokens,
+                usage.cost_usd,
+                row.tokens,
+                row.cost_usd,
+            )
         row.tokens = usage.tokens
         row.cost_usd = usage.cost_usd
         row.input_tokens = usage.input_tokens
@@ -120,7 +133,7 @@ def settle(engine: Engine, reservation_id: uuid.UUID, usage: Usage) -> None:
 
 
 def release(engine: Engine, reservation_id: uuid.UUID) -> None:
-    """Free a failed call's reservation."""
+    """Free the reservation of a call the provider never accepted. A settled row stays."""
     with Session(engine) as session, session.begin():
         session.execute(
             delete(UsageLedger).where(
