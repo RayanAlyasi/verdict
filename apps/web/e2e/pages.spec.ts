@@ -23,6 +23,16 @@ for (const route of ROUTES) {
       ).toBeLessThanOrEqual(JAVASCRIPT_BUDGET_BYTES);
     });
 
+    test("fits a 360px screen without sideways scrolling", async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== "phone", "a phone-width check");
+      await page.setViewportSize({ width: 360, height: 640 });
+      await page.goto(route.path);
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow, "pixels wider than the screen").toBe(0);
+    });
+
     test("has no serious or critical accessibility problems", async ({ page }) => {
       await page.goto(route.path);
       const { violations } = await new AxeBuilder({ page }).analyze();

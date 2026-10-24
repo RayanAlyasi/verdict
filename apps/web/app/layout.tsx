@@ -10,12 +10,16 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: "#0A1222",
   colorScheme: "dark",
+  // Safe-area insets are 0 unless the page covers the whole screen.
+  viewportFit: "cover",
+  // dvh layouts stay above the on-screen keyboard on Android, as on iOS.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-space-900 font-sans text-text antialiased">{children}</body>
+      <body className="bg-space-900 font-sans text-body text-text antialiased">{children}</body>
     </html>
   );
 }

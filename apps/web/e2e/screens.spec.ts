@@ -1,21 +1,38 @@
+import path from "node:path";
 import { test } from "@playwright/test";
 import { ROUTES } from "./routes";
 
 // For the ui-reviewer agent, which looks for artifacts/screens/<screen>-<390|1440>-<en|ar>.png.
-const SIZES = [
-  { width: 390, height: 844 },
-  { width: 1440, height: 900 },
+const SCREENS = path.resolve(import.meta.dirname, "../../../artifacts/screens");
+
+const DEVICES = [
+  {
+    width: 390,
+    // A phone, not a narrow desktop window: touch, no hover, and 2x pixels like the designs.
+    use: {
+      viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 2,
+      isMobile: true,
+      hasTouch: true,
+    },
+  },
+  { width: 1440, use: { viewport: { width: 1440, height: 900 } } },
 ];
 
-for (const route of ROUTES) {
-  for (const size of SIZES) {
-    test(`${route.name} at ${size.width}px`, async ({ page }) => {
-      await page.setViewportSize(size);
-      await page.goto(route.path);
-      await page.screenshot({
-        path: `../../artifacts/screens/${route.name}-${size.width}-en.png`,
-        fullPage: true,
+for (const device of DEVICES) {
+  test.describe(`${device.width}px`, () => {
+    test.use(device.use);
+
+    for (const route of ROUTES) {
+      test(route.name, async ({ page }) => {
+        await page.goto(route.path);
+        await page.evaluate(() => document.fonts.ready);
+        await page.screenshot({
+          path: path.join(SCREENS, `${route.name}-${device.width}-en.png`),
+          fullPage: true,
+          animations: "disabled",
+        });
       });
-    });
-  }
+    }
+  });
 }

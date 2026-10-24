@@ -30,13 +30,14 @@ Ease of use is Verdict's main differentiator. A first-year student in any major,
 | Selected | Green border and soft glow (answer options, chips, tabs) |
 
 ## Motion system
-| Token | Duration | Use |
+| Class (token) | Duration | Use |
 | --- | --- | --- |
-| `motion-fast` | 120 ms | Hover, press, toggles |
-| `motion-base` | 200 ms | State changes, expanding cards, tab switches |
-| `motion-slow` | 320 ms | Page transitions, sheets, dialogs |
-| `motion-ambient` | 6 to 30 s | Globe spin, starfield, nebula drift |
-Easing: `cubic-bezier(0.2, 0, 0, 1)` for most motion; spring-like CSS `linear()` easing for drag and press release. No animation library.
+| `duration-press` (`motion.press`) | 80 ms | Press feedback |
+| `duration-fast` (`motion.fast`) | 120 ms | Hover, toggles |
+| `duration-base` (`motion.base`) | 200 ms | State changes, expanding cards, tab switches; the default for any transition |
+| `duration-slow` (`motion.slow`) | 320 ms | Page transitions, sheets, dialogs |
+| Ambient (set per animation, not a token) | 6 to 30 s | Globe spin, starfield, nebula drift |
+Easing: `ease-standard` (`cubic-bezier(0.2, 0, 0, 1)`), the default for any transition; spring-like CSS `linear()` easing for drag and press release. No animation library.
 - **Page transitions:** the View Transitions API: fade plus 8px slide in the navigation direction; shared elements (the globe, a course card) morph between screens where designed. Browsers without support change pages instantly.
 - **Lists:** stagger entrance by 30 ms, at most 8 items.
 - **Feedback moments:** a topic's light turning green, a correct answer glowing, readiness numbers counting up.
