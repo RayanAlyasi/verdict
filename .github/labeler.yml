@@ -1,0 +1,34 @@
+# The labels are created by scripts/github/setup-repo.sh.
+"area: web":
+  - changed-files:
+      - any-glob-to-any-file: ["apps/web/**"]
+"area: api":
+  - changed-files:
+      - any-glob-to-any-file: ["services/api/**"]
+"area: ai":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "services/api/verdict/ai_gateway/**"
+          - "services/api/verdict/generation/**"
+          - "services/api/verdict/verification/**"
+          - "services/api/evals/**"
+"area: design":
+  - changed-files:
+      - any-glob-to-any-file: ["docs/brand/**", "docs/UX-GUIDELINES.md", ".claude/skills/verdict-design-system/**"]
+"area: infra":
+  - changed-files:
+      - any-glob-to-any-file: [".github/**", "**/Dockerfile", "docker-compose*.yml", "scripts/**", "config/deploy*.yml", ".kamal/**", ".coderabbit.yaml"]
+"type: docs":
+  - changed-files:
+      - all-globs-to-all-files: ["**/*.md"]
+"security":
+  - changed-files:
+      - any-glob-to-any-file: ["SECURITY.md", "docs/SECURITY-ARCHITECTURE.md", "lefthook.yml", ".github/workflows/**", "scripts/github/**", "services/api/verdict/identity/**"]
+"type: feature":
+  - head-branch: ["^feat"]
+"type: bug":
+  - head-branch: ["^fix"]
+"type: chore":
+  - head-branch: ["^chore"]
+"dependencies":
+  - head-branch: ["^dependabot/"]

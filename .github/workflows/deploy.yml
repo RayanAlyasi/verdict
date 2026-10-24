@@ -1,0 +1,184 @@
+name: deploy
+# Staging: called by ci.yml after every green push to main. Builds arm64 images once, signs their provenance, deploys them.
+# Production: publishing a GitHub Release promotes the images built for staging (no rebuild), after approval.
+# Rollback: run this workflow by hand from main with the version to restore. See docs/DEPLOYMENT.md and ADR 0011.
+on:
+  workflow_call:
+    inputs:
+      target:
+        description: "Environment to deploy (staging)"
+        type: string
+        required: true
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      rollback_to:
+        description: "Production version to roll back to, for example v0.3.2"
+        type: string
+        required: true
+permissions: {}
+concurrency:
+  group: deploy-${{ inputs.target || 'production' }}
+  cancel-in-progress: false
+
+jobs:
+  images:
+    name: build ${{ matrix.image }}
+    if: inputs.target == 'staging'
+    runs-on: ubuntu-24.04-arm # the servers are arm64; build natively, no emulation
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    strategy:
+      matrix:
+        include:
+          - image: api
+            dockerfile: services/api/Dockerfile
+          - image: web
+            dockerfile: apps/web/Dockerfile
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: name
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}/${IMAGE}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # No build cache: these images are signed and shipped, so they're built from a clean state.
+      - id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.name.outputs.image }}:sha-${{ github.sha }}
+      - name: Sign build provenance (verify with `gh attestation verify oci://<image> -R <repo>`)
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ steps.name.outputs.image }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+  deploy:
+    name: deploy ${{ inputs.target || 'production' }}
+    needs: images
+    if: ${{ !cancelled() && (needs.images.result == 'success' || needs.images.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: ${{ inputs.target || 'production' }}
+      url: ${{ vars.APP_URL }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: plan
+        name: Decide destination and version
+        env:
+          TARGET: ${{ inputs.target }}
+          ROLLBACK_TO: ${{ inputs.rollback_to }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          semver='^v[0-9]+\.[0-9]+\.[0-9]+$'
+          if [ "$TARGET" = "staging" ]; then
+            dest=staging; version="sha-$GITHUB_SHA"; mode=deploy
+          elif [ -n "$ROLLBACK_TO" ]; then
+            [[ "$ROLLBACK_TO" =~ $semver ]] || { echo "::error::Rollback version must look like v1.2.3"; exit 1; }
+            dest=production; version="$ROLLBACK_TO"; mode=rollback
+          else
+            [[ "$RELEASE_TAG" =~ $semver ]] || { echo "::error::Release tags must look like v1.2.3"; exit 1; }
+            dest=production; version="$RELEASE_TAG"; mode=promote
+          fi
+          { echo "dest=$dest"; echo "version=$version"; echo "mode=$mode"; } | tee -a "$GITHUB_OUTPUT"
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Promote the images built for staging (fails if this commit has none)
+        if: steps.plan.outputs.mode == 'promote'
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          for image in api web; do
+            ref="ghcr.io/${GITHUB_REPOSITORY,,}/$image"
+            docker buildx imagetools create --tag "$ref:$VERSION" "$ref:sha-$GITHUB_SHA"
+          done
+      - uses: ruby/setup-ruby@26e5b7d197ebf60545ee9667bcbace0be11ccaec # v1.334.0
+        with:
+          ruby-version: "3.4"
+      - name: Install Kamal and cloudflared
+        env:
+          KAMAL_VERSION: 2.12.0
+          CLOUDFLARED_VERSION: 2026.10.3
+          CLOUDFLARED_SHA256: 297d906a8fef396ec888b51571e783d594bde280f3b44d63e8fa343ef2c4cc4e
+        # Kamal's version is pinned; spec 000 moves it to a hash-checked Gemfile.lock. cloudflared is checksum-verified.
+        run: | # zizmor: ignore[adhoc-packages]
+          set -euo pipefail
+          gem install kamal --version "$KAMAL_VERSION" --no-document
+          curl -fsSLo cloudflared.deb "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64.deb"
+          echo "${CLOUDFLARED_SHA256}  cloudflared.deb" | sha256sum --check
+          sudo dpkg -i cloudflared.deb
+      - name: Configure SSH through the Cloudflare Tunnel (no open ports on the servers)
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.KAMAL_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.KAMAL_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf '%s\n' 'Host *' '  IdentityFile ~/.ssh/id_ed25519' '  ProxyCommand cloudflared access ssh --hostname %h' > ~/.ssh/config
+      - name: Deploy with Kamal (api first, so migrations run before the web app relies on them)
+        env:
+          DEST: ${{ steps.plan.outputs.dest }}
+          VERSION: ${{ steps.plan.outputs.version }}
+          MODE: ${{ steps.plan.outputs.mode }}
+          KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          TUNNEL_SERVICE_TOKEN_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          TUNNEL_SERVICE_TOKEN_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          # App secrets, read by .kamal/secrets. Keep this list in sync with docs/DEPLOYMENT.md.
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AUTH_DATABASE_URL: ${{ secrets.AUTH_DATABASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          CLOUDFLARE_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          for service in api web; do
+            if [ "$MODE" = "rollback" ]; then
+              kamal rollback "$VERSION" -c "config/deploy.$service.yml" -d "$DEST"
+            else
+              kamal deploy -c "config/deploy.$service.yml" -d "$DEST" --skip-push --version "$VERSION"
+            fi
+          done
+      - name: Smoke test
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: ./scripts/smoke-test.sh "$APP_URL"

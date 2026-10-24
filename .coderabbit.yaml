@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# Only settings that differ from CodeRabbit's defaults (ADR 0013).
+language: en-US
+reviews:
+  high_level_summary: false
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+    autofix:
+      enabled: false
+    resolve_merge_conflict:
+      enabled: false
+    fix_ci:
+      enabled: false
+  pre_merge_checks:
+    title:
+      mode: "off" # the pr-title workflow checks titles
+    description:
+      mode: "off"
+    docstrings:
+      mode: "off"
+  in_progress_fortune: false
+  suggested_labels: false # the labeler workflow labels pull requests
+  suggested_reviewers: false # CODEOWNERS assigns reviewers
+  auto_review:
+    ignore_usernames: ["dependabot[bot]"]
+  path_filters:
+    - "!apps/web/lib/api/**" # generated from the OpenAPI contract
+  path_instructions:
+    - path: "**"
+      instructions: >-
+        Report only real problems: correctness, security, acceptance criteria from the linked spec in specs/,
+        module-boundary violations, and missing UI states, mobile or right-to-left issues.
+        No style comments; formatting and lint are CI's job.
+  tools:
+    actionlint:
+      enabled: false # rejects GitHub's `$/` reusable-workflow syntax; zizmor checks workflows in CI
+    ruff:
+      enabled: false # CI pins its own Ruff; another version's default rules would conflict
+knowledge_base:
+  code_guidelines:
+    # In addition to the defaults, which include AGENTS.md. A plain path would apply only to its own folder.
+    filePatterns:
+      - files: docs/ARCHITECTURE.md, docs/SECURITY-ARCHITECTURE.md
+        applyTo: "**"
+      - files: docs/UX-GUIDELINES.md
+        applyTo: apps/web/**

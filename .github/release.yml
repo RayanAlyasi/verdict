@@ -1,0 +1,15 @@
+# A pull request appears under the first category it matches.
+changelog:
+  categories:
+    - title: Security
+      labels: ["security"]
+    - title: Features
+      labels: ["type: feature"]
+    - title: Fixes
+      labels: ["type: bug"]
+    - title: Dependencies
+      labels: ["dependencies"]
+    - title: Documentation
+      labels: ["type: docs"]
+    - title: Maintenance
+      labels: ["*"]

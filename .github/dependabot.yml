@@ -1,0 +1,18 @@
+# Version updates wait 7 days after a release, so most hijacked releases are caught and pulled first.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: chore, include: scope }
+    labels: ["dependencies"]
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: docker-compose
+    directory: "/"
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: chore, include: scope }
+    labels: ["dependencies"]

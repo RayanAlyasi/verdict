@@ -1,0 +1,62 @@
+name: evals
+# Inactive until services/api/evals exists. Pull requests reach it through ci.yml, so a regression blocks merging.
+on:
+  workflow_call:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+permissions: {}
+
+jobs:
+  evals:
+    name: evals
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Pull requests use `evals-pr`, which waits for approval; `evals` accepts only main (ADR 0013).
+    environment: ${{ github.event_name == 'pull_request' && 'evals-pr' || 'evals' }}
+    permissions:
+      contents: read
+    services:
+      db:
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_USER: verdict
+          POSTGRES_PASSWORD: verdict
+          POSTGRES_DB: verdict_evals
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U verdict" --health-interval 5s --health-retries 10
+    steps:
+      - name: Stop pull requests from forks (they can't reach the private eval set)
+        if: github.event.pull_request && github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          echo "::error::This pull request changes AI code, and evals can't run on forks. A maintainer must push the branch to this repository so evals run before merging."
+          exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: suite
+        run: echo "ready=$([ -d services/api/evals ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - name: Fetch the private evaluation set
+        if: steps.suite.outputs.ready == 'true'
+        env:
+          EVALS_REPO: ${{ vars.EVALS_REPO }}
+          EVALS_REPO_TOKEN: ${{ secrets.EVALS_REPO_TOKEN }}
+        run: git clone --depth 1 "https://x-access-token:${EVALS_REPO_TOKEN}@github.com/${EVALS_REPO}.git" services/api/evals/data
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        if: steps.suite.outputs.ready == 'true'
+        with:
+          enable-cache: true
+      - name: Run the evaluation set (fails below the thresholds in services/api/evals)
+        if: steps.suite.outputs.ready == 'true'
+        working-directory: services/api
+        env:
+          APP_ENV: test
+          DEPLOYMENT_MODE: hosted
+          DATABASE_URL: postgresql+psycopg://verdict:verdict@localhost:5432/verdict_evals
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AI_DAILY_SPEND_LIMIT_USD: ${{ vars.EVALS_SPEND_LIMIT_USD }}
+        run: |
+          uv sync --locked
+          uv run pytest evals -q

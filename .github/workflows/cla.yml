@@ -1,0 +1,90 @@
+name: cla
+# Signatures are kept on the `cla-signatures` branch, one file per GitHub account ID (IDs never change, unlike usernames).
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  # Comments trigger with write access, so the `sign` job never checks out or runs pull request code. It acts only
+  # on the exact signing sentence, posted by the pull request's own author, and treats every input as data.
+  issue_comment: # zizmor: ignore[dangerous-triggers]
+    types: [created]
+permissions: {}
+
+env:
+  SIGNING_SENTENCE: I have read the Verdict CLA and I agree to its terms.
+  SIGNATURES_BRANCH: cla-signatures
+
+jobs:
+  cla:
+    name: cla
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: read
+    steps:
+      - name: Check the author has signed the CLA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          AUTHOR_ID: ${{ github.event.pull_request.user.id }}
+          AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          if [ "$AUTHOR_TYPE" = "Bot" ] || [ "$AUTHOR" = "$OWNER" ]; then
+            echo "No CLA needed for $AUTHOR."; exit 0
+          fi
+          if gh api "repos/$GITHUB_REPOSITORY/contents/signatures/$AUTHOR_ID.json?ref=$SIGNATURES_BRANCH" --silent 2>/dev/null; then
+            echo "$AUTHOR has signed the CLA."; exit 0
+          fi
+          echo "::error::$AUTHOR hasn't signed the Contributor License Agreement. Read CLA.md, then comment exactly this on the pull request: $SIGNING_SENTENCE"
+          exit 1
+
+  sign:
+    name: sign
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      github.event.comment.user.id == github.event.issue.user.id
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write # re-runs the pull request's `cla` check
+    steps:
+      - name: Record the signature and re-run the check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BODY: ${{ github.event.comment.body }}
+          LOGIN: ${{ github.event.comment.user.login }}
+          USER_ID: ${{ github.event.comment.user.id }}
+          COMMENT_URL: ${{ github.event.comment.html_url }}
+          PR: ${{ github.event.issue.number }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          body=$(printf '%s' "$BODY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+          if [ "$body" != "$SIGNING_SENTENCE" ]; then echo "Not a signing comment."; exit 0; fi
+          repo="$GITHUB_REPOSITORY"
+          path="signatures/$USER_ID.json"
+
+          if gh api "repos/$repo/contents/$path?ref=$SIGNATURES_BRANCH" --silent 2>/dev/null; then
+            echo "$LOGIN has already signed."
+          else
+            if ! gh api "repos/$repo/branches/$SIGNATURES_BRANCH" --silent 2>/dev/null; then
+              base=$(gh api "repos/$repo/git/ref/heads/$DEFAULT_BRANCH" --jq .object.sha)
+              gh api "repos/$repo/git/refs" -f ref="refs/heads/$SIGNATURES_BRANCH" -f sha="$base" --silent
+            fi
+            cla_version=$(gh api "repos/$repo/contents/CLA.md?ref=$DEFAULT_BRANCH" --jq .sha)
+            record=$(jq -n --arg login "$LOGIN" --argjson id "$USER_ID" --argjson pr "$PR" --arg comment "$COMMENT_URL" \
+              --arg signed_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg cla "$cla_version" \
+              '{github_login: $login, github_id: $id, pull_request: $pr, comment: $comment, signed_at: $signed_at, cla_blob_sha: $cla}')
+            gh api -X PUT "repos/$repo/contents/$path" --silent \
+              -f message="chore(cla): record signature for $LOGIN" -f branch="$SIGNATURES_BRANCH" \
+              -f content="$(printf '%s\n' "$record" | base64 -w0)"
+            gh pr comment "$PR" --repo "$repo" --body "Thanks @$LOGIN, your CLA signature is recorded."
+          fi
+
+          head_sha=$(gh api "repos/$repo/pulls/$PR" --jq .head.sha)
+          run_id=$(gh api "repos/$repo/actions/workflows/cla.yml/runs?event=pull_request&head_sha=$head_sha" --jq '.workflow_runs[0].id // empty')
+          if [ -n "$run_id" ]; then gh api -X POST "repos/$repo/actions/runs/$run_id/rerun-failed-jobs" --silent || true; fi

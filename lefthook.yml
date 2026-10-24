@@ -1,0 +1,19 @@
+# Git hooks. Install once: pnpm dlx lefthook install (needs TruffleHog: https://github.com/trufflesecurity/trufflehog#installation)
+pre-commit:
+  parallel: true
+  commands:
+    secrets:
+      run: trufflehog filesystem {staged_files} --results=verified,unknown --fail --no-update
+      fail_text: "Possible secret in staged changes. Remove it; never commit credentials."
+    provenance:
+      glob: "*.{svg,png,jpg,jpeg,webp,gif,avif,pdf}"
+      run: "! LC_ALL=C grep -l -a c2pa {staged_files}"
+      fail_text: "These files carry embedded C2PA metadata. Strip it before committing: remove <metadata> from an SVG, or the caBX chunk from a PNG."
+    format-web:
+      glob: "*.{ts,tsx,js,jsx,css,json,md}"
+      run: pnpm exec prettier --write {staged_files}
+      stage_fixed: true
+    format-api:
+      glob: "*.py"
+      run: uv run --project services/api ruff format {staged_files} && uv run --project services/api ruff check --fix {staged_files}
+      stage_fixed: true

@@ -1,0 +1,53 @@
+# Dependencies and build output
+node_modules/
+.pnpm-store/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Secrets: never commit. .env.example holds names only; .kamal/secrets holds references, not values.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Private data: the evaluation set is cloned in CI and must never be committed
+services/api/evals/data/
+
+# Test output and local data
+coverage/
+playwright-report/
+test-results/
+artifacts/
+storage/
+*.log
+
+# Personal tool settings (shared settings stay committed)
+.claude/settings.local.json
+CLAUDE.local.md
+lefthook-local.yml
+
+# Operating systems and editors
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/*
+!.vscode/extensions.json

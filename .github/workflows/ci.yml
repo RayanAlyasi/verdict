@@ -1,0 +1,292 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions: {}
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      web: ${{ steps.c.outputs.web }}
+      api: ${{ steps.c.outputs.api }}
+      full: ${{ steps.c.outputs.full }}
+      ai: ${{ steps.c.outputs.ai }}
+      scripts: ${{ steps.c.outputs.scripts }}
+      deployable: ${{ steps.c.outputs.deployable }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: c
+        name: Work out which parts exist and which this change touches
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          has() { [ -e "$1" ] && echo true || echo false; }
+          web_exists=$(has apps/web/package.json)
+          api_exists=$(has services/api/pyproject.toml)
+          deployable=false
+          if [ -e apps/web/Dockerfile ] && [ -e services/api/Dockerfile ] && [ -e config/deploy.web.yml ] && [ -e config/deploy.api.yml ]; then deployable=true; fi
+
+          if [ "$EVENT" = "pull_request" ]; then changed=$(git diff --name-only "$BASE_SHA" HEAD); else changed=$(git ls-files); fi
+          touches() { grep -qE "$1" <<<"$changed" && echo true || echo false; }
+          ci='\.github/workflows/ci\.yml$'
+          web=false; [ "$web_exists" = true ] && [ "$(touches "^(apps/web/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|\.node-version$|$ci)")" = true ] && web=true
+          api=false; [ "$api_exists" = true ] && [ "$(touches "^(services/api/|\.python-version$|$ci)")" = true ] && api=true
+          full=false; [ "$web_exists" = true ] && [ "$api_exists" = true ] && { [ "$web" = true ] || [ "$api" = true ]; } && full=true
+          ai=false; [ "$api_exists" = true ] && [ "$(touches '^services/api/(verdict/(ai_gateway|generation|verification|ingestion|course_map)/|evals/)')" = true ] && ai=true
+          scripts=$(touches "(^scripts/|\.sh$|\.md$|^\.github/workflows/)")
+
+          { echo "web=$web"; echo "api=$api"; echo "full=$full"; echo "ai=$ai"; echo "scripts=$scripts"; echo "deployable=$deployable"; } | tee -a "$GITHUB_OUTPUT"
+
+  web:
+    name: web
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - name: Install Chromium (component tests run in a real browser)
+        run: pnpm --dir apps/web exec playwright install --with-deps chromium
+      - run: pnpm test
+      - run: pnpm build
+
+  api:
+    name: api
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    services:
+      db:
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_USER: verdict
+          POSTGRES_PASSWORD: verdict
+          POSTGRES_DB: verdict_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U verdict" --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://verdict:verdict@localhost:5432/verdict_test
+      APP_ENV: test
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy .
+      - name: Tests (including the module boundary test and the migration up, down, up round trip)
+        run: uv run pytest -q
+
+  contract:
+    name: contract
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+      - run: pnpm install --frozen-lockfile && uv sync --locked --project services/api
+      - name: Regenerate the OpenAPI schema and web client; fail if the committed client is out of date
+        run: pnpm contract:check
+
+  e2e:
+    name: e2e
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    services:
+      db:
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_USER: verdict
+          POSTGRES_PASSWORD: verdict
+          POSTGRES_DB: verdict
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U verdict" --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://verdict:verdict@localhost:5432/verdict
+      AUTH_DATABASE_URL: postgresql://verdict:verdict@localhost:5432/verdict
+      APP_ENV: test
+      BETTER_AUTH_SECRET: ci-only-not-a-secret
+      AI_PROVIDER: fake
+      AI_DAILY_SPEND_LIMIT_USD: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+      - run: pnpm install --frozen-lockfile && uv sync --locked --project services/api
+      - run: pnpm --dir apps/web exec playwright install --with-deps chromium
+      - name: End-to-end journeys at 390px and 1440px, with axe and the per-route JavaScript budget
+        run: pnpm e2e
+      - name: Screenshots for review (phone and desktop, English and Arabic)
+        if: github.event_name == 'pull_request'
+        run: pnpm e2e:screens
+      - if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ui-screens
+          path: artifacts/screens
+          retention-days: 14
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7
+
+  zizmor:
+    name: zizmor
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - name: Audit workflows and Dependabot config for security problems
+        env:
+          GH_TOKEN: ${{ github.token }} # online audits: impostor commits and known-vulnerable actions
+        run: uvx zizmor@1.31.1 --format=github .
+
+  scripts:
+    name: scripts
+    needs: changes
+    if: needs.changes.outputs.scripts == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - name: ShellCheck (preinstalled on the runner)
+        run: |
+          set -euo pipefail
+          shellcheck --version | sed -n 2p
+          git ls-files -z '*.sh' | xargs -0 --no-run-if-empty shellcheck
+      - name: Ruff
+        run: |
+          uvx ruff@0.17.2 check scripts
+          uvx ruff@0.17.2 format --check scripts
+      - name: Script tests (the runner's Python, as the scheduled workflows use)
+        run: python3 -m unittest discover -s scripts
+      - name: Docs links, anchors and the secrets table
+        run: python3 scripts/check_docs.py
+
+  dependency-review:
+    name: dependency-review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
+
+  evals:
+    name: evals
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.ai == 'true'
+    permissions:
+      contents: read
+    uses: $/.github/workflows/evals.yml
+
+  ci-ok:
+    name: ci-ok
+    if: always()
+    needs: [changes, web, api, contract, e2e, zizmor, scripts, dependency-review, evals]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Pass only if every job passed or was skipped
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: $RESULTS"
+          case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac
+
+  deploy-staging:
+    name: deploy-staging
+    needs: [changes, ci-ok]
+    if: github.event_name == 'push' && needs.changes.outputs.deployable == 'true'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: $/.github/workflows/deploy.yml
+    with:
+      target: staging

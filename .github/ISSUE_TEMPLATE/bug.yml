@@ -1,0 +1,27 @@
+name: Bug
+description: Something is broken or wrong
+labels: ["type: bug"]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behaviour
+    validations: { required: true }
+  - type: input
+    id: device
+    attributes:
+      label: Device, browser and language
+      placeholder: iPhone 13, Safari, Arabic
+  - type: dropdown
+    id: env
+    attributes:
+      label: Environment
+      options: [Production, Staging, Development]

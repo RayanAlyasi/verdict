@@ -1,0 +1,39 @@
+name: pr-title
+# Separate from ci.yml so editing a title re-checks it without re-running CI.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+permissions: {}
+
+jobs:
+  pr-title:
+    name: pr-title
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Check the title is a Conventional Commit
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          types='feat|fix|perf|refactor|test|docs|build|ci|chore|revert'
+          pattern="^($types)(\([a-z0-9-]+\))?!?: [a-z0-9].*[^.]\$"
+          if ! [[ "$TITLE" =~ $pattern ]]; then
+            echo "::error::Title \"$TITLE\" isn't a Conventional Commit. Use 'type(scope): summary', for example 'feat(practice): add the hint ladder'. Types: ${types//|/, }. Lowercase first word, no full stop. See docs/WORKFLOW.md."
+            exit 1
+          fi
+          if [ "$AUTHOR" != "dependabot[bot]" ] && [ "${#TITLE}" -gt 72 ]; then
+            echo "::error::Title is ${#TITLE} characters; keep it to 72 so it reads in full in git log and on GitHub."
+            exit 1
+          fi
+          echo "OK: $TITLE"
+      - name: Check the description credits no AI tool
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          ai='claude|anthropic|copilot|openai|chatgpt|gemini|cursor|codex'
+          if grep -qiE "^co-authored-by:.*($ai)|generated (with|by) .*($ai)" <<<"$BODY"; then
+            echo "::error::The description credits an AI tool. Remove that line (docs/WORKFLOW.md#attribution)."
+            exit 1
+          fi
