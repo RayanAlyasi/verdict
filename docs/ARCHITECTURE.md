@@ -73,7 +73,7 @@ Every AI call in Verdict goes through `ai_gateway`. Nothing else imports a provi
    - Over budget: degrade to a cheaper model or queue the job for batch, with a plain message to the student.
 5. **Output contracts.** All structured outputs are validated against Pydantic schemas, with one repair attempt, so changing provider never breaks the app.
 6. **Certified models.** The eval set (pydantic-evals) runs per model; only models that pass are offered in bring-your-own-key mode.
-7. **Tracing.** Every call and workflow step emits an OpenTelemetry trace, so a bad output can be traced to its prompt, sources and model.
+7. **Tracing.** Every call and workflow step emits an OpenTelemetry trace with its model, token counts, timings and usage-ledger row, but never prompt or answer text, which comes from students' work.
 
 ### Grounding (what goes into a prompt)
 - **Whole course in the prompt** when the course is under about 150,000 tokens. Course-map building and exam-wide work put the entire course in the cached prompt prefix, with page and slide markers for citations.

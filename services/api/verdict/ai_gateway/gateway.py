@@ -5,19 +5,27 @@ import json
 import uuid
 from collections.abc import Sequence
 from decimal import ROUND_CEILING, Decimal
+from typing import Literal
 
 import pydantic_ai
+from anthropic import AsyncAnthropic
 from opentelemetry.trace import TracerProvider
 from pydantic import TypeAdapter
 from pydantic_ai import Agent, capture_run_messages
 from pydantic_ai.capabilities.instrumentation import Instrumentation
-from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior
+from pydantic_ai.exceptions import (
+    ContentFilterError,
+    ModelHTTPError,
+    UnexpectedModelBehavior,
+    UsageLimitExceeded,
+)
 from pydantic_ai.messages import ModelMessage, ModelResponse
 from pydantic_ai.models import Model
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.instrumented import InstrumentationSettings
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
+from pydantic_ai.usage import UsageLimits
 from sqlalchemy import Engine
 
 from verdict.ai_gateway.budget import Limits, Usage, release, reserve, settle
@@ -32,6 +40,9 @@ MILLION = Decimal(1_000_000)
 MICRODOLLAR = Decimal("0.000001")
 # Message framing and the output tool's wrapper, beyond the text we measure.
 OVERHEAD_TOKENS = 1_000
+# Longer answers make the Anthropic SDK stream, and an error part-way through a stream can carry
+# a 4xx status after the request was billed.
+MAX_OUTPUT_TOKENS = 16_000
 
 FAKE_MODEL = "test:fake"
 # Priced like a real model, so budget limits apply to fake calls too.
@@ -54,7 +65,12 @@ FAKE_INFO = ModelInfo(
 
 
 class OutputInvalidError(Exception):
-    """The model's output failed its schema again after one repair attempt."""
+    """The model gave no usable output: invalid after one repair attempt, or a refusal."""
+
+    def __init__(self, role: Role, reason: Literal["invalid", "refused"]) -> None:
+        # A fixed message: the provider's errors quote the model's answer, built from students' work.
+        super().__init__(f"The {role} call gave no usable output ({reason})")
+        self.reason = reason
 
 
 class Gateway:
@@ -76,7 +92,7 @@ class Gateway:
             spend_usd=settings.ai_daily_spend_limit_usd,
         )
         self._fake_model = fake_model or TestModel()
-        self._models: dict[str, Model] = {}
+        self._models: dict[tuple[str, str], Model] = {}
         # Traces carry token counts and timings, never prompts or answers (they hold students' work).
         self._instrumentation = Instrumentation(
             settings=InstrumentationSettings(
@@ -101,17 +117,17 @@ class Gateway:
         """Run one call for a task role, budgeted, schema-checked and traced.
 
         Raises BudgetExceededError before any spending if the call would pass a daily limit, and
-        OutputInvalidError if the output fails its schema after one repair attempt.
+        OutputInvalidError if the model gives no usable output after one repair attempt.
         """
         name, info = self._model_for(role)
-        if max_output_tokens > info.max_output_tokens:
-            raise ValueError(f"{name} writes at most {info.max_output_tokens} tokens")
+        most = min(MAX_OUTPUT_TOKENS, info.max_output_tokens)
+        if max_output_tokens > most:
+            raise ValueError(f"A {role} call writes at most {most} tokens")
         agent = Agent(
             self._model(name, user_id),
             output_type=output_type,
             instructions=instructions,
             name=role.value,
-            metadata={"role": role.value, "feature": feature},
             retries={"output": 1},
             capabilities=[self._instrumentation],
         )
@@ -120,24 +136,42 @@ class Gateway:
             _input_tokens_upper_bound(instructions, prompt, output_type),
             max_output_tokens,
         )
-        reservation = await asyncio.to_thread(
-            reserve,
-            self._engine,
-            user_id=user_id,
-            course_id=course_id,
-            feature=feature,
-            role=role.value,
-            model=name,
-            tokens=estimate.tokens,
-            cost_usd=estimate.cost_usd,
-            limits=self._limits,
+        reserving = asyncio.create_task(
+            asyncio.to_thread(
+                reserve,
+                self._engine,
+                user_id=user_id,
+                course_id=course_id,
+                feature=feature,
+                role=role.value,
+                model=name,
+                tokens=estimate.tokens,
+                cost_usd=estimate.cost_usd,
+                limits=self._limits,
+            )
         )
+        try:
+            reservation = await asyncio.shield(reserving)
+        except asyncio.CancelledError:
+            # The reservation still commits in its thread; free it once it has, or it would
+            # count against the student until midnight.
+            reserving.add_done_callback(self._release_if_reserved)
+            raise
         # The failure paths call the budget directly rather than in a thread, so that a cancelled
         # task still records what it may have spent.
         with capture_run_messages() as messages:
             try:
                 result = await agent.run(
-                    prompt, model_settings={"max_tokens": max_output_tokens}
+                    prompt,
+                    model_settings={"max_tokens": max_output_tokens},
+                    # Two requests at most, the answer and its repair, as the estimate assumes.
+                    # Without this, a reply that skips the output tool gets retries of its own.
+                    usage_limits=UsageLimits(request_limit=2),
+                    metadata={
+                        "role": role.value,
+                        "feature": feature,
+                        "ledger_id": str(reservation),
+                    },
                 )
             except ModelHTTPError as error:
                 if 400 <= error.status_code < 500:
@@ -149,9 +183,12 @@ class Gateway:
                 else:
                     settle(self._engine, reservation, estimate)
                 raise
-            except UnexpectedModelBehavior as error:
+            except (UnexpectedModelBehavior, UsageLimitExceeded) as error:
                 settle(self._engine, reservation, _usage(info, messages))
-                raise OutputInvalidError(str(error)) from error
+                reason: Literal["invalid", "refused"] = (
+                    "refused" if isinstance(error, ContentFilterError) else "invalid"
+                )
+                raise OutputInvalidError(role, reason) from None
             except BaseException:
                 # A timeout, a broken stream or a cancellation may still have been billed.
                 settle(self._engine, reservation, estimate)
@@ -160,6 +197,10 @@ class Gateway:
             settle, self._engine, reservation, _usage(info, messages)
         )
         return result.output
+
+    def _release_if_reserved(self, reserving: asyncio.Task[uuid.UUID]) -> None:
+        if not reserving.cancelled() and reserving.exception() is None:
+            release(self._engine, reserving.result())
 
     def _model_for(self, role: Role) -> tuple[str, ModelInfo]:
         if self._settings.ai_provider == "fake":
@@ -172,15 +213,18 @@ class Gateway:
     def _model(self, name: str, user_id: uuid.UUID) -> Model:
         if self._settings.ai_provider == "fake":
             return self._fake_model
-        if name not in self._models:
-            provider, _, model_name = name.partition(":")
-            key = resolve_credential(self._settings, provider, user_id)
-            if provider != "anthropic":
-                raise LookupError(f"No adapter for {provider} models")
-            self._models[name] = AnthropicModel(
-                model_name, provider=AnthropicProvider(api_key=key.get_secret_value())
+        provider, _, model_name = name.partition(":")
+        if provider != "anthropic":
+            raise LookupError(f"No adapter for {provider} models")
+        key = resolve_credential(self._settings, provider, user_id).get_secret_value()
+        # Cached per key, not per model, so one student's key can never serve another.
+        if (name, key) not in self._models:
+            # No hidden retries: each attempt may be billed, so a retry must reserve again.
+            client = AsyncAnthropic(api_key=key, max_retries=0)
+            self._models[name, key] = AnthropicModel(
+                model_name, provider=AnthropicProvider(anthropic_client=client)
             )
-        return self._models[name]
+        return self._models[name, key]
 
 
 def _input_tokens_upper_bound(instructions: str, prompt: str, output_type: type) -> int:
