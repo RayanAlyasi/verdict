@@ -66,7 +66,9 @@ Every AI call in Verdict goes through `ai_gateway`. Nothing else imports a provi
 3. **Provider adapters** through Pydantic AI (Anthropic, OpenAI, Google and any OpenAI-compatible service such as OpenRouter or Ollama). It handles provider quirks such as explicit cache breakpoints. The batch lane calls the official Anthropic and OpenAI SDKs directly.
 4. **Budgets before spending.**
    - Each call's estimated tokens and cost are reserved in one atomic step against the student's daily token limit and the platform's daily spend cap, so parallel jobs can't overspend.
-   - The usage ledger row (user, course, feature, model, tokens, cache hits, cost) then replaces the reservation with the real figures.
+   - Estimates are upper bounds, so the real figures never push the ledger past a limit: all input tokens at the model's highest input rate (cache writes cost more than plain input), plus the maximum output.
+   - The usage ledger row (user, course, feature, model, tokens, cache hits, cost) then replaces the reservation with the real figures. A call the provider rejected releases its reservation; one that may have been billed (a timeout or a broken stream) settles at its estimate.
+   - Limits reset at 00:00 UTC. A reservation counts only against its own day, so one left behind by a crashed worker clears at the reset.
    - Over budget: degrade to a cheaper model or queue the job for batch, with a plain message to the student.
 5. **Output contracts.** All structured outputs are validated against Pydantic schemas, with one repair attempt, so changing provider never breaks the app.
 6. **Certified models.** The eval set (pydantic-evals) runs per model; only models that pass are offered in bring-your-own-key mode.

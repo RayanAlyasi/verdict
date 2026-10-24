@@ -45,3 +45,9 @@ pythonpath = ["."]
 script_location = "%(here)s/migrations"
 prepend_sys_path = ["."]
 
+
+[[tool.alembic.post_write_hooks]]
+name = "ruff"
+type = "module"
+module = "ruff"
+options = "format REVISION_SCRIPT_FILENAME"

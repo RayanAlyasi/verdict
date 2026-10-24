@@ -49,7 +49,7 @@ When this ships, a contributor can clone the repo, run one command and see the V
     - the student's daily token limit (`AI_DAILY_TOKEN_LIMIT_PER_USER`);
     - the platform's daily spend cap (`AI_DAILY_SPEND_LIMIT_USD`), which protects the hosted credits however many students sign up.
   - If any limit would be passed, nothing is reserved and the call is refused.
-  - After the call, the ledger row replaces the reservation with the real tokens and cost. A failed call releases its reservation.
+  - After the call, the ledger row replaces the reservation with the real tokens and cost. A call the provider rejected releases its reservation; one that may have been billed (a timeout or a broken stream) settles at its estimate.
   - Each limit compares like with like: tokens with tokens, dollars with dollars.
   - Days reset at 00:00 UTC. Reservations belong to their day, so one left by a crashed worker clears at the reset.
 - **DBOS:**
