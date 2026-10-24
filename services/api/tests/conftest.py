@@ -32,6 +32,13 @@ def as_api_role(url: URL, **kwargs: Any) -> Engine:
     return create_engine(url, connect_args={"options": "-c role=verdict_api"}, **kwargs)
 
 
+def api_role_url(url: URL) -> str:
+    """A DATABASE_URL that acts as the api's role, for code that opens its own connections."""
+    return url.set(query={"options": "-c role=verdict_api"}).render_as_string(
+        hide_password=False
+    )
+
+
 def migrate(
     engine: Engine, pyproject: Path, step: Callable[[Config, str], None], target: str
 ) -> None:

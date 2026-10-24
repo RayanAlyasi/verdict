@@ -91,8 +91,9 @@ Every AI call in Verdict goes through `ai_gateway`. Nothing else imports a provi
 ## Background work
 - **DBOS** runs durable workflows and queues inside Postgres, with no separate broker. A DBOS SQL function enqueues a workflow atomically with the data it belongs to.
 - **Steps are checkpointed,** with per-step retries and backoff, per-queue concurrency and rate limits, and scheduled workflows.
-- **Queues:** `ingestion`, `generation`, `verification`, `media` (CPU-heavy video rendering) and `maintenance`.
-- **Progress** reaches the UI through Postgres `LISTEN/NOTIFY` and then server-sent events, with no polling.
+- **Queues:** `ingestion`, `generation`, `verification`, `media` (CPU-heavy video rendering) and `maintenance`, each with a concurrency limit across all workers (`verdict/workflows.py`).
+- **Workers:** one per queue, `python -m verdict.worker <queue>`. Each keeps the executor ID `worker-<queue>`, so a restarted worker resumes the workflows it was running. The api only enqueues.
+- **Progress** reaches the UI through Postgres `LISTEN/NOTIFY` and then server-sent events, with no polling. A workflow writes it to a DBOS stream, which is stored, so a late reader still gets every update.
 
 ## The sandbox service (Phase 3)
 - **What it is:** the only deliberately separate service. It runs and tests AI-generated interactive diagrams and games in a headless browser inside a locked-down container.
