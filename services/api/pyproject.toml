@@ -17,6 +17,7 @@ dependencies = [
 [tool.uv]
 package = false
 # Same 7-day wait as pnpm's minimumReleaseAge, so most hijacked releases are pulled before we resolve them.
+# For an urgent security fix, exempt that one package: exclude-newer-package = { name = false }.
 exclude-newer = "7 days"
 default-groups = ["dev", "py314-proof"]
 

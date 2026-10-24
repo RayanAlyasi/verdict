@@ -18,7 +18,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Settings load here, not at import, so the OpenAPI export runs without any configuration.
     settings = load_settings()
     app.state.settings = settings
-    app.state.engine = create_engine(settings.database_url, pool_pre_ping=True)
+    # The timeout makes /health answer 503 instead of hanging when the host is unreachable.
+    app.state.engine = create_engine(
+        settings.database_url, pool_pre_ping=True, connect_args={"connect_timeout": 5}
+    )
     yield
     app.state.engine.dispose()
 

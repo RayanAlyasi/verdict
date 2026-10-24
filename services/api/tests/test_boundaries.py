@@ -6,6 +6,11 @@ from pathlib import Path
 VERDICT = Path(__file__).resolve().parents[1] / "verdict"
 
 
+def module_folders(root: Path) -> list[Path]:
+    """Every folder under verdict/ is a module, with or without __init__.py and api.py."""
+    return sorted(p for p in root.iterdir() if p.is_dir() and p.name != "__pycache__")
+
+
 def imported_names(path: Path, root: Path) -> list[str]:
     package = list(path.relative_to(root.parent).parent.parts)
     names = []
@@ -20,7 +25,7 @@ def imported_names(path: Path, root: Path) -> list[str]:
 
 
 def boundary_breaches(root: Path) -> list[str]:
-    modules = {path.parent.name for path in root.glob("*/api.py")}
+    modules = {folder.name for folder in module_folders(root)}
     breaches = []
     for module in sorted(modules):
         for path in sorted((root / module).rglob("*.py")):
@@ -37,8 +42,13 @@ def test_modules_import_each_other_only_through_api() -> None:
 
 
 def test_every_module_has_a_public_interface() -> None:
-    packages = {path.parent.name for path in VERDICT.glob("*/__init__.py")}
-    assert packages == {path.parent.name for path in VERDICT.glob("*/api.py")}
+    missing = [
+        f"{folder.name}/{name}"
+        for folder in module_folders(VERDICT)
+        for name in ("__init__.py", "api.py")
+        if not (folder / name).is_file()
+    ]
+    assert missing == []
 
 
 def test_the_boundary_check_catches_breaches(tmp_path: Path) -> None:
@@ -47,9 +57,14 @@ def test_the_boundary_check_catches_breaches(tmp_path: Path) -> None:
         "courses/__init__.py": "",
         "courses/api.py": "",
         "courses/models.py": "",
+        "billing/models.py": "",
         "practice/__init__.py": "",
         "practice/api.py": "from verdict.courses.api import create_course\n",
-        "practice/grading.py": "import verdict.courses.api\nfrom verdict.db import Base\n",
+        "practice/grading.py": (
+            "import verdict.courses.api\n"
+            "from verdict.db import Base\n"
+            "from verdict.billing.models import Invoice\n"
+        ),
         "practice/sessions/__init__.py": "",
         "practice/sessions/start.py": (
             "from verdict.courses.models import Course\n"
@@ -63,6 +78,7 @@ def test_the_boundary_check_catches_breaches(tmp_path: Path) -> None:
         (root / name).write_text(source)
 
     assert boundary_breaches(root) == [
+        "verdict/practice/grading.py imports verdict.billing.models.Invoice",
         "verdict/practice/sessions/start.py imports verdict.courses.models.Course",
         "verdict/practice/sessions/start.py imports verdict.courses.models",
     ]

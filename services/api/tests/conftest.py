@@ -7,11 +7,12 @@ import psycopg
 import pytest
 from sqlalchemy import URL, create_engine, make_url, text
 
-# The superuser connection the tests use to create and drop their own databases.
-# CI sets DATABASE_URL; locally it defaults to docker compose's superuser.
+# The superuser connection the tests use to create and drop their own databases. It isn't
+# DATABASE_URL, which is the api's own role. CI sets it; locally it's docker compose's superuser.
 ADMIN_URL = make_url(
     os.environ.get(
-        "DATABASE_URL", "postgresql+psycopg://verdict:verdict@localhost:5432/postgres"
+        "TEST_ADMIN_DATABASE_URL",
+        "postgresql+psycopg://verdict:verdict@localhost:5432/postgres",
     )
 )
 ROLES_SQL = Path(__file__).resolve().parents[3] / "config" / "db" / "10-roles.sql"

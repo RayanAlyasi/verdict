@@ -10,13 +10,15 @@ BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'verdict_web') THEN
     CREATE ROLE verdict_web;
   END IF;
-  -- Owning the database gives the api the public schema and lets DBOS create its own schema.
-  EXECUTE format('ALTER DATABASE %I OWNER TO verdict_api', current_database());
   EXECUTE format('REVOKE ALL ON DATABASE %I FROM PUBLIC', current_database());
-  EXECUTE format('GRANT CONNECT ON DATABASE %I TO verdict_web', current_database());
+  EXECUTE format('GRANT CONNECT ON DATABASE %I TO verdict_api, verdict_web', current_database());
+  -- CREATE lets DBOS add its own schema. The database stays the superuser's, because its owner
+  -- could alter or drop it, auth schema included.
+  EXECUTE format('GRANT CREATE ON DATABASE %I TO verdict_api', current_database());
 END
 $$;
 
+ALTER SCHEMA public OWNER TO verdict_api;
 -- Postgres grants USAGE on public to every role; without this the web role could read api tables.
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
 

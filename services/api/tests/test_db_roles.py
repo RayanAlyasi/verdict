@@ -3,10 +3,11 @@ from contextlib import contextmanager
 
 import psycopg
 import pytest
+from psycopg import sql
 from psycopg.errors import InsufficientPrivilege
 from sqlalchemy import URL
 
-from tests.conftest import apply_roles, libpq
+from tests.conftest import ADMIN_URL, apply_roles, libpq
 
 
 @contextmanager
@@ -34,6 +35,22 @@ def test_the_web_role_cannot_reach_api_tables(roles_database: URL) -> None:
             web.execute("SELECT * FROM public.course")
         with pytest.raises(InsufficientPrivilege):
             web.execute("CREATE TABLE public.planted (id int)")
+
+
+def test_the_api_role_cannot_alter_or_drop_the_database(roles_database: URL) -> None:
+    database = sql.Identifier(str(roles_database.database))
+    alter = sql.SQL("ALTER DATABASE {} SET default_transaction_read_only = on")
+    with (
+        connect_as(roles_database, "verdict_api") as api,
+        pytest.raises(InsufficientPrivilege),
+    ):
+        api.execute(alter.format(database))
+    # DROP DATABASE can't run while connected to that database, so connect elsewhere.
+    with (
+        connect_as(ADMIN_URL, "verdict_api") as api,
+        pytest.raises(InsufficientPrivilege),
+    ):
+        api.execute(sql.SQL("DROP DATABASE {}").format(database))
 
 
 def test_the_roles_file_can_run_again(roles_database: URL) -> None:

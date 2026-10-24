@@ -1,10 +1,18 @@
+import importlib
 import logging
+from pathlib import Path
 
 from alembic import context
 from sqlalchemy import Connection, create_engine
 
+import verdict
 from verdict.db import Base
 from verdict.settings import load_settings
+
+# Autogenerate compares the database with Base.metadata, so every module's models must be
+# imported first; otherwise it writes drop_table for the tables of any module it didn't see.
+for models in sorted(Path(verdict.__file__).parent.glob("*/models.py")):
+    importlib.import_module(f"verdict.{models.parent.name}.models")
 
 
 def run(connection: Connection) -> None:

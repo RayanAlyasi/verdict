@@ -1,12 +1,16 @@
+import shutil
 from collections.abc import Callable
 from pathlib import Path
 
+import pytest
 from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import URL, Connection, Engine, create_engine, text
+from sqlalchemy.exc import ProgrammingError
 
-PYPROJECT = Path(__file__).resolve().parents[1] / "pyproject.toml"
+API = Path(__file__).resolve().parents[1]
+PYPROJECT = API / "pyproject.toml"
 
 UNINDEXED_FOREIGN_KEYS = text("""
     SELECT t.relname, c.conname
@@ -44,11 +48,25 @@ def as_api_role(url: URL) -> Engine:
     return create_engine(url, connect_args={"options": "-c role=verdict_api"})
 
 
-def migrate(engine: Engine, step: Callable[[Config, str], None], target: str) -> None:
-    with engine.begin() as connection:
-        config = Config(toml_file=PYPROJECT)
+def migrate(
+    engine: Engine, pyproject: Path, step: Callable[[Config, str], None], target: str
+) -> None:
+    # connect(), not begin(): Alembic must own the transaction, as it does when deployed,
+    # or a migration's autocommit_block() (CREATE INDEX CONCURRENTLY) fails here.
+    with engine.connect() as connection:
+        config = Config(toml_file=pyproject)
         config.attributes["connection"] = connection
         step(config, target)
+
+
+def round_trip(engine: Engine, pyproject: Path) -> None:
+    script = ScriptDirectory.from_config(Config(toml_file=pyproject))
+    for revision in reversed(list(script.walk_revisions())):
+        migrate(engine, pyproject, command.upgrade, revision.revision)
+        migrate(engine, pyproject, command.downgrade, "-1")
+        migrate(engine, pyproject, command.upgrade, revision.revision)
+    migrate(engine, pyproject, command.downgrade, "base")
+    migrate(engine, pyproject, command.upgrade, "head")
 
 
 def convention_breaches(connection: Connection) -> dict[str, list[tuple[str, str]]]:
@@ -66,18 +84,35 @@ def test_each_migration_upgrades_downgrades_and_upgrades_again(
     roles_database: URL,
 ) -> None:
     engine = as_api_role(roles_database)
-    script = ScriptDirectory.from_config(Config(toml_file=PYPROJECT))
-    for revision in reversed(list(script.walk_revisions())):
-        migrate(engine, command.upgrade, revision.revision)
-        migrate(engine, command.downgrade, "-1")
-        migrate(engine, command.upgrade, revision.revision)
-    migrate(engine, command.downgrade, "base")
-    migrate(engine, command.upgrade, "head")
+    round_trip(engine, PYPROJECT)
     with engine.connect() as connection:
         assert convention_breaches(connection) == {
             "foreign keys without an index": [],
             "primary keys without uuidv7()": [],
         }
+    engine.dispose()
+
+
+def test_the_round_trip_catches_a_downgrade_that_undoes_nothing(
+    roles_database: URL, tmp_path: Path
+) -> None:
+    (tmp_path / "migrations" / "versions").mkdir(parents=True)
+    shutil.copy(API / "migrations" / "env.py", tmp_path / "migrations")
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.alembic]\nscript_location = "%(here)s/migrations"\n'
+    )
+    (tmp_path / "migrations" / "versions" / "a1_note.py").write_text(
+        "from alembic import op\n"
+        "revision = 'a1'\n"
+        "down_revision = None\n"
+        "def upgrade() -> None:\n"
+        "    op.execute('CREATE TABLE note (id uuid PRIMARY KEY DEFAULT uuidv7())')\n"
+        "def downgrade() -> None:\n"
+        "    pass\n"
+    )
+    engine = as_api_role(roles_database)
+    with pytest.raises(ProgrammingError, match="already exists"):
+        round_trip(engine, tmp_path / "pyproject.toml")
     engine.dispose()
 
 

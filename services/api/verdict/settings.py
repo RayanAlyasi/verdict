@@ -67,5 +67,6 @@ def _message(problems: list[str]) -> str:
     return (
         "The api can't start until these settings are fixed.\n"
         f"{lines}\n"
-        "Locally, copy .env.example to .env. Deployed, set them in the environment's secrets."
+        "Locally they come from .env (copy .env.example); deployed, from the environment's "
+        "secrets."
     )

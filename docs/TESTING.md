@@ -24,7 +24,7 @@ Real course materials from several majors, with checked answers. They're kept in
 
 ## Rules
 - A bug fix starts with a failing test.
-- api tests create and drop their own databases as Postgres's superuser: `DATABASE_URL` in CI, docker compose's `verdict` user locally. Migrations are tested as the api's own role.
+- api tests create and drop their own databases as Postgres's superuser, from `TEST_ADMIN_DATABASE_URL` (default: docker compose's `verdict` user). Migrations and role checks run as the api's and web's own roles.
 - Tests use factories, not shared fixtures that drift.
 - No sleeps in e2e tests; wait for visible state.
 - Flaky tests are fixed or quarantined within a day, never ignored.
