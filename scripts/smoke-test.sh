@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: scripts/smoke-test.sh https://staging.example.com
+# Usage: scripts/smoke-test.sh https://verdict-staging.alyasi.tech
 # Waits for the new deployment, then checks health. The web health endpoint also checks the api, database and storage.
 # Staging sits behind Cloudflare Access: set CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET to pass it.
 set -euo pipefail

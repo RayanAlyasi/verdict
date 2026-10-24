@@ -4,7 +4,7 @@ Three environments run the same images with different data and secrets. Changes 
 
 | | Development | Staging | Production |
 | --- | --- | --- | --- |
-| Address | `localhost:3000` (web) and `:8000` (API) | `staging.<domain>` | `app.<domain>` |
+| Address | `localhost:3000` (web) and `:8000` (API) | `verdict-staging.alyasi.tech` | `verdict.alyasi.tech` |
 | Access | You | The team and testers, behind an access gate | Everyone |
 | Deploys | `pnpm dev` | Kamal, automatically on every merge to `main` | Kamal, when a GitHub Release is published and approved |
 | Database | Postgres 18 with pgvector in Docker | Postgres 18 with pgvector, continuous backups | Postgres 18 with pgvector, point-in-time recovery |
