@@ -6,9 +6,11 @@ license = "AGPL-3.0-only"
 requires-python = ">=3.14"
 dependencies = [
     "alembic>=1.20.0",
+    "anthropic>=1.15.0",
     "fastapi>=0.143.3",
     "psycopg[binary]>=3.3.6",
     "pydantic>=2.14.1",
+    "pydantic-ai-slim[anthropic]>=2.57.0",
     "pydantic-settings>=2.16.0",
     "sqlalchemy>=2.1.5",
     "uvicorn[standard]>=0.54.0",
@@ -19,11 +21,15 @@ package = false
 # Same 7-day wait as pnpm's minimumReleaseAge, so most hijacked releases are pulled before we resolve them.
 # For an urgent security fix, exempt that one package: exclude-newer-package = { name = false }.
 exclude-newer = "7 days"
+# Nothing installs certifi today (httpx2 trusts the system's certificates), but if a dependency
+# brings it in, never below the fix for compromised certificate authorities, GHSA-6q48-6c7w-9gw2.
+constraint-dependencies = ["certifi>=2026.10.19"]
 
 [dependency-groups]
 dev = [
     "httpx2>=2.13.1",
     "mypy>=2.4.0",
+    "opentelemetry-sdk>=1.45.1",
     "pytest>=9.1.1",
     "ruff>=0.17.1",
 ]

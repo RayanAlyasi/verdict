@@ -28,6 +28,7 @@ class UsageLedger(Base):
     model: Mapped[str]
     tokens: Mapped[int] = mapped_column(BigInteger)
     cost_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6))
+    # As in Pydantic AI's usage, input_tokens includes the cache reads and writes.
     input_tokens: Mapped[int | None]
     output_tokens: Mapped[int | None]
     cache_read_tokens: Mapped[int | None]

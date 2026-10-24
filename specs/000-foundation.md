@@ -41,7 +41,7 @@ When this ships, a contributor can clone the repo, run one command and see the V
   - `course_id` on every course-scoped table, and every foreign key indexed.
   - Better Auth's tables live in a separate `auth` schema, reached only with the web app's own database role.
 - **`ai_gateway` skeleton:**
-  - Task roles, a model registry (YAML, with capabilities and prices) and a credential resolver for `hosted` and `self_hosted`. `byok` storage lands in a later spec, but the interface exists now.
+  - Task roles, a model registry (TOML, read with Python's standard library, with capabilities and prices) and a credential resolver for `hosted` and `self_hosted`. `byok` storage lands in a later spec, but the interface exists now.
   - Calls go through Pydantic AI, installed slim with only the chosen providers.
   - A usage ledger table, the budget check (below), schema-validated outputs with one repair attempt, the `fake` provider, and an OpenTelemetry trace for every call.
 - **Budget check that parallel jobs can't race:**

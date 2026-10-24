@@ -58,7 +58,7 @@ Rules:
 ## The AI gateway
 Every AI call in Verdict goes through `ai_gateway`. Nothing else imports a provider SDK.
 
-1. **Task roles, not model names.** Code asks for a role: `extract`, `generate`, `tutor`, `verify`, `embed`. The **model registry** maps roles to models per provider, with each model's capabilities (structured output, vision, context size, caching style, batch support) and prices.
+1. **Task roles, not model names.** Code asks for a role: `extract`, `generate`, `tutor`, `verify`, `embed`. The **model registry** (`verdict/ai_gateway/registry.toml`) maps roles to models per provider, with each model's capabilities (structured output, vision, context size, caching style, batch support) and prices.
 2. **Credential resolution.** Who pays depends on `DEPLOYMENT_MODE`:
    - `hosted` (feedback phase): platform keys from the secret store, with per-student budgets.
    - `byok` (full release): the student's own key, stored with envelope encryption (a per-credential data key encrypted by a master key held outside the database). It's decrypted only in worker memory at call time, never sent to the browser and never logged.
@@ -68,11 +68,12 @@ Every AI call in Verdict goes through `ai_gateway`. Nothing else imports a provi
    - Each call's estimated tokens and cost are reserved in one atomic step against the student's daily token limit and the platform's daily spend cap, so parallel jobs can't overspend.
    - Estimates are upper bounds, so the real figures never push the ledger past a limit: all input tokens at the model's highest input rate (cache writes cost more than plain input), plus the maximum output.
    - The usage ledger row (user, course, feature, model, tokens, cache hits, cost) then replaces the reservation with the real figures. A call the provider rejected releases its reservation; one that may have been billed (a timeout or a broken stream) settles at its estimate.
+   - The student's token limit counts every token a call reads or writes, cached ones included.
    - Limits reset at 00:00 UTC. A reservation counts only against its own day, so one left behind by a crashed worker clears at the reset.
    - Over budget: degrade to a cheaper model or queue the job for batch, with a plain message to the student.
 5. **Output contracts.** All structured outputs are validated against Pydantic schemas, with one repair attempt, so changing provider never breaks the app.
 6. **Certified models.** The eval set (pydantic-evals) runs per model; only models that pass are offered in bring-your-own-key mode.
-7. **Tracing.** Every call and workflow step emits an OpenTelemetry trace, so a bad output can be traced to its prompt, sources and model.
+7. **Tracing.** Every call and workflow step emits an OpenTelemetry trace with its model, token counts, timings and usage-ledger row, but never prompt or answer text, which comes from students' work.
 
 ### Grounding (what goes into a prompt)
 - **Whole course in the prompt** when the course is under about 150,000 tokens. Course-map building and exam-wide work put the entire course in the cached prompt prefix, with page and slide markers for citations.
