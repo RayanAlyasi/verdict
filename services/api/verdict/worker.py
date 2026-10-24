@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import os
 import signal
 import threading
 
@@ -32,6 +33,10 @@ def main() -> None:
     signal.signal(signal.SIGINT, lambda *_: stop.set())
     stop.wait()
     DBOS.destroy(workflow_completion_timeout_sec=STOP_TIMEOUT_SECONDS)
+    # DBOS stops waiting at the timeout, but a workflow mid-step or mid-sleep still holds its
+    # thread, and Python would wait for it. Leave now; the workflow resumes on the next start.
+    logging.shutdown()
+    os._exit(0)
 
 
 if __name__ == "__main__":
