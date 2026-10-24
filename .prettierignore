@@ -1,0 +1,6 @@
+# Docs keep compact, hand-formatted tables; Prettier would pad every row.
+*.md
+# Generated, and checked by pnpm lint and pnpm contract:check.
+apps/web/app/theme.css
+apps/web/lib/api/
+pnpm-lock.yaml

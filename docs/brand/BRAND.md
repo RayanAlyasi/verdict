@@ -28,6 +28,7 @@ The product is dark-first: a calm space background (drifting nebula, twinkling s
 | Coral | `#F07A6E` | Wrong answers, errors |
 | Dim | `#33465F` | Not started |
 | Text / muted / faint | `#FFFFFF` / `#C9D3DF` / `#8C9AAE` | Text hierarchy |
+
 The light palette (ink `#0F1E33`, verdigris `#12806A` on white) is used for printed exam papers and PDFs.
 
 ## Typography

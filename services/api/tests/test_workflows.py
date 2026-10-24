@@ -98,7 +98,8 @@ def api_server(database_url: str) -> Iterator[str]:
     try:
         assert server.stdout is not None
         for line in server.stdout:
-            if "Application startup complete" in line:
+            # Logged once the port is bound; "Application startup complete" comes before that.
+            if "Uvicorn running on" in line:
                 break
         else:
             raise AssertionError("The api never started")

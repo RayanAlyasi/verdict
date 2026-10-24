@@ -4,11 +4,12 @@ The first real workflow, in spec 001, replaces it.
 """
 
 import asyncio
+import contextlib
 import logging
 from collections.abc import AsyncIterator
 from typing import Annotated
 
-from dbos import DBOS
+from dbos import DBOS, WorkflowHandleAsync
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from pydantic import BaseModel
@@ -122,7 +123,24 @@ async def example_progress(
             offset += 1
     finally:
         await updates.aclose()
-    status = await DBOS.get_workflow_status_async(workflow_id)
-    yield ServerSentEvent(
-        event="end", data=Ended(status=status.status if status else "UNKNOWN")
-    )
+    status = await _final_status(workflow_id)
+    if status is not None:
+        yield ServerSentEvent(event="end", data=Ended(status=status))
+
+
+async def _final_status(workflow_id: str) -> str | None:
+    """The workflow's status once it has finished, or None if it's still running.
+
+    Closing the stream is a workflow's last step, but DBOS records the outcome a moment later, so
+    reading the status straight away can still say PENDING.
+    """
+    handle: WorkflowHandleAsync[None] = await DBOS.retrieve_workflow_async(workflow_id)
+    try:
+        async with asyncio.timeout(IDLE_SECONDS):
+            # A failed or cancelled workflow raises here; its status says which.
+            with contextlib.suppress(Exception):
+                await handle.get_result()
+    except TimeoutError:
+        # Still running: end without an `end` event, so the browser reconnects and waits again.
+        return None
+    return (await handle.get_status()).status

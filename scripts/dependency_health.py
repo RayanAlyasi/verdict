@@ -35,6 +35,8 @@ EXCEPTIONS = {
     "fastapi/fastapi": "Company-backed (FastAPI Labs); a thin layer over Starlette and Pydantic",
     "pgvector/pgvector": "Shipped by every major cloud's managed Postgres",
     "jpadilla/pyjwt": "Depended on across the Python ecosystem",
+    "dequelabs/axe-core-npm": "Backed by Deque, the company behind axe-core, the accessibility engine",
+    "facebook/react": "The React Compiler's Babel plugin, stable at 1.0, ships from React's own repository",
 }
 
 # Packages whose registry entry doesn't link to their GitHub repository.

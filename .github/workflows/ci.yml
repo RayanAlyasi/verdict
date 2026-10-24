@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
 permissions: {}
+env:
+  NEXT_TELEMETRY_DISABLED: "1" # Next.js reports anonymous usage by default
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}

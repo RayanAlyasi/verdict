@@ -1,0 +1,17 @@
+packages:
+  - apps/*
+
+# New versions wait 7 days before they can be installed, so most hijacked releases are pulled first
+# (the same wait as Dependabot's cooldown and uv's exclude-newer).
+minimumReleaseAge: 10080
+
+# Install scripts run only when allowed here. These two only fetch or check a native binary that
+# already comes as an optional dependency, so they stay off.
+allowBuilds:
+  esbuild: false
+  unrs-resolver: false
+
+overrides:
+  # Orval's schema loader pins undici 7.29.1, which has a high-severity denial-of-service advisory
+  # (GHSA-xjj6-f33q-929c). Build-time only; drop this once Orval moves past it.
+  "@scalar/json-magic>undici": 7.30.1

@@ -4,7 +4,7 @@ Tests exist to let us move fast without breaking students' study sessions. Write
 
 | Layer | Tool | What it covers | When it runs |
 | --- | --- | --- | --- |
-| Unit (web) | Vitest Browser Mode (real Chromium) | Components' states (hover on pointer only, pressed, focus-visible, disabled, loading), right-to-left behaviour, logic | Every PR |
+| Unit (web) | Vitest Browser Mode (real Chromium) for `*.browser.test.ts(x)`, Node for `*.node.test.ts` | Components' states (hover on pointer only, pressed, focus-visible, disabled, loading), right-to-left behaviour, logic; build scripts and lint rules in Node | Every PR |
 | Unit and integration (api) | pytest + a real Postgres (service container) | Modules, API endpoints, the module boundary test, migrations applied up, down and up again | Every PR that touches the api |
 | End-to-end | Playwright | The main journeys on phone (390px) and desktop (1440px); each route's compressed JavaScript stays under 170 KB | Every PR that touches web or api |
 | Accessibility | @axe-core/playwright | No serious or critical violations on each screen | Every PR, inside e2e |
@@ -27,4 +27,5 @@ Real course materials from several majors, with checked answers. They're kept in
 - api tests create and drop their own databases as Postgres's superuser, from `TEST_ADMIN_DATABASE_URL` (default: docker compose's `verdict` user). Migrations and role checks run as the api's and web's own roles.
 - Tests use factories, not shared fixtures that drift.
 - No sleeps in e2e tests; wait for visible state.
+- Every page is listed in `apps/web/e2e/routes.ts`, which gives it the JavaScript budget, the accessibility check and review screenshots.
 - Flaky tests are fixed or quarantined within a day, never ignored.

@@ -45,7 +45,7 @@ You sign once; the `cla` check then passes on all your pull requests.
 4. **UI changes** include screenshots at phone (390px) and desktop (1440px) width, in English and Arabic.
 5. **Run the checks** for what you changed:
    ```bash
-   pnpm lint && pnpm typecheck && pnpm test     # web
+   pnpm lint && pnpm typecheck && pnpm test     # web (first run: pnpm --dir apps/web exec playwright install chromium)
    uv run --directory services/api ruff check . && uv run --directory services/api mypy . && uv run --directory services/api pytest   # api
    ```
 6. **Title the pull request** as a [Conventional Commit](https://www.conventionalcommits.org/), for example `feat(web): add the exam picker`. It becomes the commit on `main`.
