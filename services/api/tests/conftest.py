@@ -77,3 +77,8 @@ def api_engine(roles_database: URL) -> Iterator[Engine]:
     migrate(engine, PYPROJECT, command.upgrade, "head")
     yield engine
     engine.dispose()
+
+
+@pytest.fixture
+def anyio_backend() -> str:
+    return "asyncio"

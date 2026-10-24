@@ -9,6 +9,7 @@ dependencies = [
     "fastapi>=0.143.3",
     "psycopg[binary]>=3.3.6",
     "pydantic>=2.14.1",
+    "pydantic-ai-slim[anthropic]>=2.57.0",
     "pydantic-settings>=2.16.0",
     "sqlalchemy>=2.1.5",
     "uvicorn[standard]>=0.54.0",
@@ -19,11 +20,16 @@ package = false
 # Same 7-day wait as pnpm's minimumReleaseAge, so most hijacked releases are pulled before we resolve them.
 # For an urgent security fix, exempt that one package: exclude-newer-package = { name = false }.
 exclude-newer = "7 days"
+# certifi is the list of certificate authorities Python trusts. Its updates remove compromised ones,
+# so it skips the wait, and never goes below the fix for GHSA-6q48-6c7w-9gw2.
+exclude-newer-package = { certifi = false }
+constraint-dependencies = ["certifi>=2026.10.19"]
 
 [dependency-groups]
 dev = [
     "httpx2>=2.13.1",
     "mypy>=2.4.0",
+    "opentelemetry-sdk>=1.45.1",
     "pytest>=9.1.1",
     "ruff>=0.17.1",
 ]

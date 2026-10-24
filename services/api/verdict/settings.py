@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import Field, ValidationError
+from pydantic import Field, SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,6 +33,14 @@ class Settings(BaseSettings):
         ge=0,
         description="the platform's daily AI spend cap in US dollars, for example 5",
     )
+    ai_provider: Literal["auto", "fake"] = Field(
+        default="auto",
+        description="auto, or fake for tests (canned answers, no AI provider)",
+    )
+    anthropic_api_key: SecretStr | None = Field(
+        default=None,
+        description="the platform's Anthropic API key, from platform.claude.com",
+    )
 
 
 def load_settings() -> Settings:
@@ -54,17 +62,33 @@ def load_settings() -> Settings:
             else:
                 problems.append(f"{name.upper()} is invalid: {detail['msg']}.")
         raise SettingsError(_message(problems)) from None
-    if (
-        settings.deployment_mode == "hosted"
-        and settings.ai_daily_spend_limit_usd is None
+    problems = []
+    if settings.deployment_mode == "hosted":
+        if settings.ai_daily_spend_limit_usd is None:
+            problems.append(
+                _missing_in_hosted_mode(
+                    "ai_daily_spend_limit_usd", "a cap on AI spending"
+                )
+            )
+        if settings.ai_provider == "auto" and settings.anthropic_api_key is None:
+            problems.append(
+                _missing_in_hosted_mode("anthropic_api_key", "the platform's AI key")
+            )
+    if settings.ai_provider == "fake" and settings.app_env not in (
+        "development",
+        "test",
     ):
-        hint = Settings.model_fields["ai_daily_spend_limit_usd"].description
-        problem = (
-            "AI_DAILY_SPEND_LIMIT_USD is missing or empty: hosted mode needs a cap "
-            f"on AI spending. Set it to {hint}."
+        problems.append(
+            f"AI_PROVIDER is fake, which gives canned answers: use auto in {settings.app_env}."
         )
-        raise SettingsError(_message([problem]))
+    if problems:
+        raise SettingsError(_message(problems))
     return settings
+
+
+def _missing_in_hosted_mode(name: str, why: str) -> str:
+    hint = Settings.model_fields[name].description
+    return f"{name.upper()} is missing or empty: hosted mode needs {why}. Set it to {hint}."
 
 
 def _message(problems: list[str]) -> str:

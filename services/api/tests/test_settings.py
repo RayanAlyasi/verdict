@@ -14,6 +14,7 @@ VALID = {
     "DEPLOYMENT_MODE": "hosted",
     "DATABASE_URL": f"postgresql+psycopg://verdict:{PASSWORD}@localhost:1/verdict",
     "AI_DAILY_SPEND_LIMIT_USD": "1",
+    "ANTHROPIC_API_KEY": f"sk-ant-{PASSWORD}",
 }
 
 
@@ -52,7 +53,7 @@ def test_the_api_stops_at_startup_without_a_required_setting(
 
 @pytest.fixture
 def environment(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
-    for name in VALID:
+    for name in [*VALID, "AI_PROVIDER"]:
         monkeypatch.delenv(name, raising=False)
     return monkeypatch
 
@@ -77,3 +78,26 @@ def test_an_invalid_value_is_named_but_never_shown(
     assert "APP_ENV is invalid" in str(error.value)
     assert "AI_DAILY_SPEND_LIMIT_USD is invalid" in str(error.value)
     assert PASSWORD not in str(error.value)
+
+
+def test_the_fake_provider_runs_only_in_development_and_tests(
+    environment: pytest.MonkeyPatch,
+) -> None:
+    for name, value in VALID.items():
+        environment.setenv(name, value)
+    environment.setenv("AI_PROVIDER", "fake")
+    environment.delenv("ANTHROPIC_API_KEY")
+    assert load_settings().ai_provider == "fake"
+    environment.setenv("APP_ENV", "staging")
+    with pytest.raises(SettingsError, match="AI_PROVIDER is fake"):
+        load_settings()
+
+
+def test_self_hosted_mode_needs_no_platform_key(
+    environment: pytest.MonkeyPatch,
+) -> None:
+    for name, value in VALID.items():
+        environment.setenv(name, value)
+    environment.setenv("DEPLOYMENT_MODE", "self_hosted")
+    environment.delenv("ANTHROPIC_API_KEY")
+    assert load_settings().anthropic_api_key is None
