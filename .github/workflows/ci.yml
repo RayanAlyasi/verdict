@@ -81,11 +81,7 @@ jobs:
     name: api
     needs: changes
     if: needs.changes.outputs.api == 'true'
-    # TEMPORARY, removed before merge: the Python 3.14 dependency proof on both architectures.
-    strategy:
-      matrix:
-        runner: [ubuntu-latest, ubuntu-24.04-arm]
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: read
