@@ -146,6 +146,6 @@ See [ADR 0010](adr/0010-stack-revised.md) and [ADR 0011](adr/0011-hosting-kamal.
 ```
 apps/web/           Next.js app (app/, components/, lib/, e2e/)
 services/api/       FastAPI app: verdict/<module>/, migrations/, tests/, evals/
-config/             Kamal deploy configuration
+config/             Kamal deploy configuration; db/ creates the database roles
 docs/ specs/ scripts/ .claude/ .github/
 ```

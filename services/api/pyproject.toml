@@ -1,0 +1,74 @@
+[project]
+name = "verdict-api"
+version = "0.0.0"
+description = "Verdict's API: all data, business logic and AI"
+license = "AGPL-3.0-only"
+requires-python = ">=3.14"
+dependencies = [
+    "alembic>=1.20.0",
+    "fastapi>=0.143.3",
+    "psycopg[binary]>=3.3.6",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.0",
+    "sqlalchemy>=2.1.5",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[tool.uv]
+package = false
+# Same 7-day wait as pnpm's minimumReleaseAge, so most hijacked releases are pulled before we resolve them.
+exclude-newer = "7 days"
+default-groups = ["dev", "py314-proof"]
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.13.1",
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "ruff>=0.17.1",
+]
+py314-proof = [
+    "dbos",
+    "pydantic-ai-slim[anthropic,openai]",
+    "anthropic",
+    "openai",
+    "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp-proto-http",
+    "pyjwt[crypto]",
+    "sympy",
+    "pint",
+    "docling",
+    "torch",
+    "torchvision",
+    "pydantic-evals",
+    "python-multipart",
+    "boto3",
+    "sentry-sdk[fastapi]",
+]
+
+[tool.ruff.lint]
+extend-select = ["B", "I", "RUF", "SIM", "UP"]
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+exclude = ["^\\.venv/"]
+
+[tool.pytest]
+strict = true
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.alembic]
+script_location = "%(here)s/migrations"
+prepend_sys_path = ["."]
+
+# TEMPORARY, removed before merge: spec 000's one CI run proving every planned dependency installs on 3.14.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

@@ -7,7 +7,7 @@ The review agents (`.claude/agents/`), skills (`.claude/skills/`) and commands (
 ## Commands
 - `pnpm dev`: web (3000) and api (8000) with hot reload. `docker compose up -d` first.
 - `pnpm lint` · `pnpm typecheck` · `pnpm test` · `pnpm e2e`: web checks.
-- `uv run --project services/api ruff check . && uv run --project services/api mypy . && uv run --project services/api pytest`: api checks.
+- `uv run --directory services/api ruff check . && uv run --directory services/api mypy . && uv run --directory services/api pytest`: api checks.
 - `pnpm e2e:screens`: Playwright screenshots at 390px and 1440px, English and Arabic, into `artifacts/screens/`.
 
 ## How we work (always)
