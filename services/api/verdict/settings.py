@@ -1,4 +1,5 @@
 from decimal import Decimal
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, SecretStr, ValidationError
@@ -40,6 +41,14 @@ class Settings(BaseSettings):
     anthropic_api_key: SecretStr | None = Field(
         default=None,
         description="the platform's Anthropic API key, from platform.claude.com",
+    )
+    storage_driver: Literal["local"] = Field(
+        default="local",
+        description="local (S3-compatible storage arrives with uploads)",
+    )
+    storage_local_path: Path = Field(
+        default=Path("storage"),
+        description="the folder for uploaded and generated files, for example ./storage",
     )
 
 

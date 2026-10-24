@@ -31,11 +31,20 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "storage": {
+            "enum": [
+              "ok",
+              "unavailable"
+            ],
+            "title": "Storage",
+            "type": "string"
           }
         },
         "required": [
           "status",
-          "database"
+          "database",
+          "storage"
         ],
         "title": "Health",
         "type": "object"
@@ -233,6 +242,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            },
+            "description": "The database or storage is unavailable"
           }
         },
         "summary": "Health"

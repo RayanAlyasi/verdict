@@ -35,9 +35,18 @@ export const HealthStatus = {
   unavailable: 'unavailable',
 } as const;
 
+export type HealthStorage = typeof HealthStorage[keyof typeof HealthStorage];
+
+
+export const HealthStorage = {
+  ok: 'ok',
+  unavailable: 'unavailable',
+} as const;
+
 export interface Health {
   database: HealthDatabase;
   status: HealthStatus;
+  storage: HealthStorage;
 }
 
 export interface Started {
@@ -146,12 +155,19 @@ export type healthResponse200 = {
   status: 200
 }
 
+export type healthResponse503 = {
+  data: Health
+  status: 503
+}
+
 export type healthResponseSuccess = (healthResponse200) & {
   headers: Headers;
 };
-;
+export type healthResponseError = (healthResponse503) & {
+  headers: Headers;
+};
 
-export type healthResponse = (healthResponseSuccess)
+export type healthResponse = (healthResponseSuccess | healthResponseError)
 
 export const getHealthUrl = () => {
 

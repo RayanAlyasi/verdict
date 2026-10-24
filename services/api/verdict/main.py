@@ -1,13 +1,15 @@
 import asyncio
 import logging
+import tempfile
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Literal
 
 from dbos import DBOS
 from fastapi import FastAPI, Request, Response
 from pydantic import BaseModel
-from sqlalchemy import create_engine, text
+from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from verdict import example, workflows
@@ -21,6 +23,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Settings load here, not at import, so the OpenAPI export runs without any configuration.
     settings = load_settings()
     app.state.settings = settings
+    settings.storage_local_path.mkdir(parents=True, exist_ok=True)
     # The timeout makes /health answer 503 instead of hanging when the host is unreachable.
     app.state.engine = create_engine(
         settings.database_url, pool_pre_ping=True, connect_args={"connect_timeout": 5}
@@ -44,18 +47,46 @@ app.openapi_version = "3.2.0"
 app.include_router(example.router)
 
 
+Status = Literal["ok", "unavailable"]
+
+
 class Health(BaseModel):
-    status: Literal["ok", "unavailable"]
-    database: Literal["ok", "unavailable"]
+    status: Status
+    database: Status
+    storage: Status
 
 
-@app.get("/health")
+@app.get(
+    "/health",
+    responses={
+        503: {"model": Health, "description": "The database or storage is unavailable"}
+    },
+)
 def health(request: Request, response: Response) -> Health:
+    database = _database_status(request.app.state.engine)
+    storage = _storage_status(request.app.state.settings.storage_local_path)
+    status: Status = "ok" if database == storage == "ok" else "unavailable"
+    if status != "ok":
+        response.status_code = 503
+    return Health(status=status, database=database, storage=storage)
+
+
+def _database_status(engine: Engine) -> Status:
     try:
-        with request.app.state.engine.connect() as connection:
+        with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
     except SQLAlchemyError:
         logger.warning("Health check: the database is unavailable", exc_info=True)
-        response.status_code = 503
-        return Health(status="unavailable", database="unavailable")
-    return Health(status="ok", database="ok")
+        return "unavailable"
+    return "ok"
+
+
+def _storage_status(folder: Path) -> Status:
+    try:
+        # Creating a file, not just finding the folder, which can exist and still be read-only.
+        with tempfile.NamedTemporaryFile(dir=folder, prefix=".health-"):
+            pass
+    except OSError:
+        logger.warning("Health check: storage is unavailable", exc_info=True)
+        return "unavailable"
+    return "ok"

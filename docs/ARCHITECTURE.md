@@ -151,7 +151,7 @@ Split only with evidence: a module needs independent scaling (the `media` worker
 ## Technology
 See [ADR 0010](adr/0010-stack-revised.md) and [ADR 0011](adr/0011-hosting-kamal.md). Repository layout after spec 000:
 ```
-apps/web/           Next.js app (app/, components/, lib/, tests/, e2e/; scripts/ generates the theme and the API client)
+apps/web/           Next.js app (app/[lang]/, components/, lib/, locales/, tests/, e2e/; scripts/ generates the theme and the API client)
 services/api/       FastAPI app: verdict/<module>/, migrations/, tests/, evals/
 config/             Kamal deploy configuration; db/ creates the database roles
 docs/ specs/ scripts/ .claude/ .github/
