@@ -9,7 +9,7 @@ services:
       VERDICT_API_DB_PASSWORD: verdict_api
       VERDICT_WEB_DB_PASSWORD: verdict_web
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"   # this machine only: the passwords here are public
     volumes:
       - db-data:/var/lib/postgresql   # Postgres 18 images keep data in a versioned folder under this path
       - ./config/db:/docker-entrypoint-initdb.d:ro   # the api and web roles, as in staging and production; runs only on a new volume

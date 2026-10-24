@@ -32,7 +32,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.engine.dispose()
 
 
-app = FastAPI(title="Verdict API", lifespan=lifespan)
+app = FastAPI(
+    title="Verdict API",
+    lifespan=lifespan,
+    # Operation ids from the route function's name, so the generated client reads startExample().
+    generate_unique_id_function=lambda route: route.name,
+)
+# Server-sent events are described with OpenAPI 3.2's itemSchema, so the schema says 3.2 (it is
+# otherwise 3.1, which 3.2 includes); tools validating it as 3.1, like the client generator, reject it.
+app.openapi_version = "3.2.0"
 app.include_router(example.router)
 
 
