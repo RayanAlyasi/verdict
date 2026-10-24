@@ -2,6 +2,13 @@ import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTypescript from "eslint-config-next/typescript";
 import { defineConfig, globalIgnores } from "eslint/config";
 
+// What components/ui may not import: anything under @/ but ui itself and lib/, the API client and
+// its fetch, and any path with a "..", "." or empty segment, which could lead back out of ui.
+const UI_FORBIDDEN =
+  "^@/(?!(components/ui|lib)/)|^@/lib/api(-fetch)?([/.]|$)|(^|/)\\.\\.(/|$)|/\\.(/|$)|//";
+const UI_MESSAGE =
+  "components/ui holds shared building blocks: no pages, feature components or API calls. Reach other ui folders through @/components/ui/.";
+
 export default defineConfig([
   ...nextVitals,
   ...nextTypescript,
@@ -18,16 +25,13 @@ export default defineConfig([
     rules: {
       "no-restricted-imports": [
         "error",
+        { patterns: [{ regex: UI_FORBIDDEN, message: UI_MESSAGE }] },
+      ],
+      "no-restricted-syntax": [
+        "error",
         {
-          patterns: [
-            {
-              // Pages, feature components (any components/ folder but ui), the API client, and
-              // relative paths out of ui.
-              regex: "^@/(app|lib/api)(/|$)|^@/components/(?!ui(/|$))|^\\.\\./",
-              message:
-                "components/ui holds shared building blocks: no pages, feature components or API calls.",
-            },
-          ],
+          selector: `ImportExpression[source.value=/${UI_FORBIDDEN.replaceAll("/", "\\/")}/]`,
+          message: UI_MESSAGE,
         },
       ],
     },

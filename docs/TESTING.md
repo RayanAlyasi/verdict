@@ -4,7 +4,7 @@ Tests exist to let us move fast without breaking students' study sessions. Write
 
 | Layer | Tool | What it covers | When it runs |
 | --- | --- | --- | --- |
-| Unit (web) | Vitest Browser Mode (real Chromium) for `*.browser.test.tsx`, Node for `*.node.test.ts` | Components' states (hover on pointer only, pressed, focus-visible, disabled, loading), right-to-left behaviour, logic; build scripts and lint rules in Node | Every PR |
+| Unit (web) | Vitest Browser Mode (real Chromium) for `*.browser.test.ts(x)`, Node for `*.node.test.ts` | Components' states (hover on pointer only, pressed, focus-visible, disabled, loading), right-to-left behaviour, logic; build scripts and lint rules in Node | Every PR |
 | Unit and integration (api) | pytest + a real Postgres (service container) | Modules, API endpoints, the module boundary test, migrations applied up, down and up again | Every PR that touches the api |
 | End-to-end | Playwright | The main journeys on phone (390px) and desktop (1440px); each route's compressed JavaScript stays under 170 KB | Every PR that touches web or api |
 | Accessibility | @axe-core/playwright | No serious or critical violations on each screen | Every PR, inside e2e |

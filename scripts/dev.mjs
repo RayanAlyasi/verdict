@@ -41,6 +41,12 @@ const children = services.map(({ name, color, command, args }) => {
   for (const stream of [child.stdout, child.stderr]) {
     createInterface({ input: stream }).on("line", (line) => console.log(`${label} | ${line}`));
   }
+  child.on("error", (error) => {
+    console.error(
+      `${label} | can't start ${command}: ${error.message}. See the requirements in README.md.`,
+    );
+    stop(1);
+  });
   child.on("exit", (code) => {
     console.log(`${label} | exited with code ${code ?? "signal"}`);
     stop(code ?? 1);

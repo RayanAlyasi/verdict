@@ -10,3 +10,8 @@ minimumReleaseAge: 10080
 allowBuilds:
   esbuild: false
   unrs-resolver: false
+
+overrides:
+  # Orval's schema loader pins undici 7.29.1, which has a high-severity denial-of-service advisory
+  # (GHSA-xjj6-f33q-929c). Build-time only; drop this once Orval moves past it.
+  "@scalar/json-magic>undici": 7.30.1

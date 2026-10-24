@@ -15,7 +15,9 @@ for (const route of ROUTES) {
           sizes.push(response.body().then((body) => gzipSync(body).length));
         }
       });
-      await page.goto(route.path, { waitUntil: "load" });
+      await page.goto(route.path);
+      // After load as well: lazy scripts and dynamic chunks count against the route.
+      await page.waitForLoadState("networkidle");
       const total = (await Promise.all(sizes)).reduce((sum, size) => sum + size, 0);
       expect(
         total,
