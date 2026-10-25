@@ -33,6 +33,7 @@ services/api/evals/data/
 coverage/
 playwright-report/
 test-results/
+.vitest/
 artifacts/
 storage/
 *.log

@@ -1,2 +1,14 @@
 @import "tailwindcss";
 @import "./theme.css";
+
+@theme {
+  /* The primary action's soft pulse. Ambient, so its timing is set here rather than by a motion
+     token (docs/UX-GUIDELINES.md); it fades a glow drawn once instead of animating box-shadow. */
+  --animate-glow-pulse: glow-pulse 3.2s ease-in-out infinite;
+
+  @keyframes glow-pulse {
+    50% {
+      opacity: 1;
+    }
+  }
+}

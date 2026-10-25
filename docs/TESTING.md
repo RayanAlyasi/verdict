@@ -27,6 +27,7 @@ Real course materials from several majors, with checked answers. They're kept in
 - api tests create and drop their own databases as Postgres's superuser, from `TEST_ADMIN_DATABASE_URL` (default: docker compose's `verdict` user). Migrations and role checks run as the api's and web's own roles.
 - Tests use factories, not shared fixtures that drift.
 - No sleeps in e2e tests; wait for visible state.
+- Component tests render into Chromium with the app's CSS (`apps/web/tests/render.tsx`) and check what a student would see: React Aria's state attributes and the computed styles they produce.
 - Every page is listed in `apps/web/e2e/routes.ts`, which gives it, in each language, the JavaScript budget, the accessibility and layout checks and review screenshots.
 - The e2e suite starts the api and the web on ports 8100 and 3100, with the settings in `.env` and docker compose's database.
 - Flaky tests are fixed or quarantined within a day, never ignored.

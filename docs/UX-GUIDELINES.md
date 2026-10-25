@@ -59,4 +59,4 @@ Largest Contentful Paint under 2.5 s Â· Interaction to Next Paint under 200 ms Â
 WCAG 2.2 AA: contrast 4.5:1 for text, 3:1 for controls; full keyboard use; visible focus; screen-reader labels for icons and charts; touch targets at least 44 x 44px; colour is never the only signal (readiness uses colour, shape and words).
 
 ## Arabic and right-to-left
-Use logical CSS properties (`margin-inline-start`, not `margin-left`). Layouts mirror; icons with direction (arrows, chevrons) flip; numbers and code stay left-to-right. Every screen is checked in Arabic before merge.
+Use logical CSS properties (`margin-inline-start`, not `margin-left`). Layouts mirror; icons with direction (arrows, chevrons) flip; numbers and code stay left-to-right. Arabic headings get taller line heights than Latin ones, so the marks above and below a line don't touch the next. Every screen is checked in Arabic before merge.
