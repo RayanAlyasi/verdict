@@ -50,6 +50,9 @@
   --shadow-glow-primary: 0 0 22px rgba(60,196,162,.45);
   --shadow-glow-soft: 0 0 18px rgba(60,196,162,.18);
   --shadow-overlay: 0 12px 32px rgba(0,0,0,.45);
+  --shadow-light-mastered: 0 0 8px #3CC4A2;
+  --shadow-light-progress: 0 0 6px rgba(227,168,74,.8);
+  --shadow-light-current: 0 0 8px rgba(255,255,255,.6);
   --breakpoint-*: initial;
   --breakpoint-sm: 640px;
   --breakpoint-md: 768px;

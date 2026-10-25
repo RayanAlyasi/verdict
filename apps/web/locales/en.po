@@ -7,6 +7,18 @@ msgstr ""
 "X-Generator: @lingui/cli\n"
 "Language: en\n"
 
+#: app/[lang]/dev/ui/page.tsx
+msgid "9 of 12 midterm topics mastered."
+msgstr "9 of 12 midterm topics mastered."
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Add a course and its files, and Verdict builds your study plan from them."
+msgstr "Add a course and its files, and Verdict builds your study plan from them."
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Add your first course"
+msgstr "Add your first course"
+
 #: app/[lang]/layout.tsx
 #: app/[lang]/page.tsx
 msgid "An exam coach built from your own course materials."
@@ -21,12 +33,24 @@ msgid "Buttons"
 msgstr "Buttons"
 
 #: app/[lang]/dev/ui/page.tsx
+msgid "Change the exam date"
+msgstr "Change the exam date"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Check your connection, then try again."
+msgstr "Check your connection, then try again."
+
+#: app/[lang]/dev/ui/page.tsx
 msgid "Chips"
 msgstr "Chips"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Close"
 msgstr "Close"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Common trap: converting the units after the formula."
+msgstr "Common trap: converting the units after the formula."
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Components"
@@ -43,6 +67,18 @@ msgstr "Course code"
 #: app/[lang]/dev/ui/page.tsx
 msgid "Course name"
 msgstr "Course name"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Course saved."
+msgstr "Course saved."
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Current question"
+msgstr "Current question"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Empty state"
+msgstr "Empty state"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Exam date"
@@ -69,16 +105,52 @@ msgid "In depth"
 msgstr "In depth"
 
 #: app/[lang]/dev/ui/page.tsx
+msgid "In progress"
+msgstr "In progress"
+
+#: app/[lang]/dev/ui/page.tsx
 msgid "Instructor"
 msgstr "Instructor"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Lights"
+msgstr "Lights"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Loading"
+msgstr "Loading"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Loading your course"
+msgstr "Loading your course"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Mastered"
+msgstr "Mastered"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Mixed"
 msgstr "Mixed"
 
 #: app/[lang]/dev/ui/page.tsx
+msgid "Next: enzyme kinetics"
+msgstr "Next: enzyme kinetics"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "No courses yet"
+msgstr "No courses yet"
+
+#: app/[lang]/dev/ui/page.tsx
 msgid "Not now"
 msgstr "Not now"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Not started"
+msgstr "Not started"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Panels"
+msgstr "Panels"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Past paper"
@@ -91,6 +163,10 @@ msgstr "Pick a date after today."
 #: app/[lang]/dev/ui/page.tsx
 msgid "Prediction exam"
 msgstr "Prediction exam"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Question {question} of {questions}"
+msgstr "Question {question} of {questions}"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Revision"
@@ -109,6 +185,14 @@ msgid "Segmented control"
 msgstr "Segmented control"
 
 #: app/[lang]/dev/ui/page.tsx
+msgid "Show a confirmation"
+msgstr "Show a confirmation"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Show an error"
+msgstr "Show an error"
+
+#: app/[lang]/dev/ui/page.tsx
 msgid "Simply"
 msgstr "Simply"
 
@@ -125,9 +209,29 @@ msgid "Text fields"
 msgstr "Text fields"
 
 #: app/[lang]/dev/ui/page.tsx
+msgid "Toasts and sheets"
+msgstr "Toasts and sheets"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Today's session, about 25 minutes."
+msgstr "Today's session, about 25 minutes."
+
+#: app/[lang]/dev/ui/page.tsx
 msgid "Topic drill"
 msgstr "Topic drill"
 
 #: app/[lang]/not-found.tsx
 msgid "We couldn't find this page."
 msgstr "We couldn't find this page."
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "We couldn't read page 4 of this file. Try a clearer photo."
+msgstr "We couldn't read page 4 of this file. Try a clearer photo."
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "We couldn't save your course."
+msgstr "We couldn't save your course."
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Your midterm is on 3 January. Your plan moves with it."
+msgstr "Your midterm is on 3 January. Your plan moves with it."

@@ -42,7 +42,13 @@ Tailwind's theme is generated from `tokens.json` (`apps/web/app/theme.css`; edit
 ## Components
 Build once in `apps/web/components/ui`, on React Aria Components styled with Tailwind: Button (primary, secondary, ghost), IconButton, Input, Textarea with mic, Select, Panel, Chip, SegmentedControl, Light, ProgressLights, Globe, AnswerOption (A to D letter box), SourceChip, Toast, Sheet (phone) and Dialog (desktop), BottomNav, Sidebar, AppShell, PageTransition, Skeleton, EmptyState.
 
-Built so far: Button (`variant`, `size`, `pulse` for the screen's main action, `isPending` with `pendingLabel`), IconButton, Input, Chip and SegmentedControl. `/en/dev/ui` and `/ar/dev/ui` show them in every state when `APP_ENV` is development, test or staging (unset hides it, as in production). They take their text as props or children, already translated by the page, so they never import Lingui; `components/ui/styles.ts` holds the shared state classes.
+Built so far:
+- **Controls:** Button (`variant`, `size`, `pulse` for the screen's main action, `isPending` with `pendingLabel`), IconButton, Input, Chip and SegmentedControl.
+- **Status:** Panel (`tone`: default, glow, amber, coral), Light (`status`: mastered, progress, not-started, current; always next to its word), ProgressLights (one light per item, read as a progress bar), Skeleton (inside a region marked `aria-busy` with a status message) and EmptyState (what's missing and one step).
+- **Overlays:** Sheet (controlled with `isOpen` and `onOpenChange`; a bottom sheet on phones, a dialog from 1024px) and toasts (`toastQueue.add(...)`, with `<Toasts>` once per page; errors get no timeout). Both load their React Aria code the first time they're used, which keeps routes inside the JavaScript budget; do the same for any other heavy overlay.
+- **Motion gates:** an animation tied to a state selector (`data-entering:`) outranks `motion-reduce:`, so gate those with `motion-safe:` instead.
+
+`/en/dev/ui` and `/ar/dev/ui` show them in every state when `APP_ENV` is development, test or staging (unset hides it, as in production). They take their text as props or children, already translated by the page, so they never import Lingui; `components/ui/styles.ts` holds the shared state classes.
 
 Every interactive component has these states:
 - **Hover:** style it from React Aria's `data-hovered`, which never fires on touch.
