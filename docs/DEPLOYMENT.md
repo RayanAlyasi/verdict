@@ -34,7 +34,8 @@ gh attestation verify oci://ghcr.io/rayanalyasi/verdict/api:v0.4.0 -R RayanAlyas
 ## Images
 - **`apps/web/Dockerfile`:** Next.js's standalone server on Node 26, run as the non-root `node` user. `pnpm --dir apps/web start` runs the same server locally after a build.
 - **`services/api/Dockerfile`:** Python 3.14 with the locked dependencies, run as a non-root user. By default it runs `alembic upgrade head`, then starts uvicorn; each worker role runs `python -m verdict.worker <queue>` instead.
-- **Both:** built from the repository root for arm64, with base images pinned by digest (Dependabot proposes updates), current root certificates and the `org.opencontainers.image.licenses` label.
+- **Both:** built from the repository root for arm64, with base images pinned by digest (Dependabot proposes updates, without the usual 7-day wait, because they carry security fixes), current root certificates and the `org.opencontainers.image.licenses` label.
+- **Storage:** the api writes uploads to `/app/storage`. Mount a named volume there; a host folder must belong to uid 1000.
 
 Build and run one locally with `docker build -f services/api/Dockerfile --build-arg APP_COMMIT=$(git rev-parse HEAD) -t verdict-api .`.
 

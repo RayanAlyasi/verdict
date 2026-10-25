@@ -15,7 +15,9 @@ cpSync(
 );
 const server = spawn(process.execPath, ["apps/web/server.js"], {
   cwd: standalone,
-  env: { ...process.env, PORT: port },
+  // All interfaces, as next start did: the standalone server binds to $HOSTNAME, which some
+  // systems and dev containers set to the machine's name.
+  env: { ...process.env, PORT: port, HOSTNAME: "0.0.0.0" },
   stdio: "inherit",
 });
 server.on("exit", (code, signal) => process.exit(code ?? (signal ? 1 : 0)));

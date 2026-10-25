@@ -1,11 +1,11 @@
-# syntax=docker/dockerfile:1
 # The web app: Next.js's standalone server on Node 26, run as the non-root node user. Build it from
 # the repository root, where the workspace and its lockfile live:
 #   docker build -f apps/web/Dockerfile --build-arg APP_COMMIT=$(git rev-parse HEAD) .
 
-ARG NODE_IMAGE=node:26.12.1-trixie-slim@sha256:36793bcbb160a6a16cede1e62b93f84e26b78a972a8a4c0b879c1c12f22761ec
+# Named in a FROM line, not an ARG, so Dependabot can see it and propose updates.
+FROM node:26.12.1-trixie-slim@sha256:36793bcbb160a6a16cede1e62b93f84e26b78a972a8a4c0b879c1c12f22761ec AS base
 
-FROM ${NODE_IMAGE} AS build
+FROM base AS build
 ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -16,7 +16,7 @@ RUN npm install --global "$(node -p 'require("./package.json").packageManager')"
 COPY apps/web apps/web
 RUN pnpm --dir apps/web build
 
-FROM ${NODE_IMAGE}
+FROM base
 # Current root certificates, which NODE_USE_SYSTEM_CA adds to Node's bundled ones.
 RUN apt-get update \
   && apt-get install --yes --no-install-recommends ca-certificates \

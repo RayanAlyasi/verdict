@@ -34,9 +34,10 @@ updates:
     groups:
       javascript:
         update-types: [minor, patch]
+  # No cooldown: official images are rebuilt mostly for security fixes, which never arrive as
+  # Dependabot security updates, so waiting would delay exactly those.
   - package-ecosystem: docker
     directories: ["/apps/web", "/services/api"]
     schedule: { interval: weekly }
-    cooldown: { default-days: 7 }
     commit-message: { prefix: chore, include: scope }
     labels: ["dependencies"]
