@@ -34,12 +34,13 @@ const TONES = {
 
 // Where toasts appear: a landmark F6 reaches from anywhere. It loads with the page rather than
 // with the first toast, because an error toast must still show when the network is down. On
-// phones it sits above whatever the shell pins to the bottom, via --toast-offset.
+// phones it sits above the tallest of what's pinned to the bottom of the screen: the shell's
+// --toast-offset, an open sheet's actions (--sheet-offset) or the safe area.
 export function Toasts({ closeLabel }: { closeLabel: string }): ReactNode {
   return (
     <ToastRegion
       queue={toastQueue}
-      className="fixed inset-x-4 bottom-[calc(var(--toast-offset,0px)+--spacing(4)+env(safe-area-inset-bottom))] z-50 flex flex-col gap-2 rounded-row outline-offset-4 data-focus-visible:outline-2 data-focus-visible:outline-focus lg:inset-x-auto lg:end-6 lg:bottom-6 lg:w-96"
+      className="fixed inset-x-4 bottom-[calc(max(var(--toast-offset,0px),var(--sheet-offset,0px),env(safe-area-inset-bottom))+--spacing(4))] z-50 flex flex-col gap-2 rounded-row outline-offset-4 data-focus-visible:outline-2 data-focus-visible:outline-focus lg:inset-x-auto lg:end-6 lg:bottom-6 lg:w-96"
     >
       {({ toast }) => {
         const tone = TONES[toast.content.tone ?? "info"];

@@ -44,13 +44,14 @@ Build once in `apps/web/components/ui`, on React Aria Components styled with Tai
 
 Built so far:
 - **Controls:** Button (`variant`, `size`, `pulse` for the screen's main action, `isPending` with `pendingLabel`), IconButton, Input, Chip and SegmentedControl.
-- **Status:** Panel (`tone`: a default card, or a tighter glow, amber or coral callout), Light (`status`: mastered, progress, not-started, current; always next to its word), ProgressLights (`name` and `label`, read as a progress bar; `layout="inline"` with a `shortLabel` on desktop), Skeleton (inside a region marked `aria-busy`, with the loading message in a `role="status"` element beside it) and EmptyState (what's missing and one step).
+- **Status:** Panel (`tone`: a default card, or a tighter glow, amber or coral callout), Light (`status`: mastered, progress, not-started, current; always next to its word), ProgressLights (`name` and `label`, read as a progress bar; `layout="inline"` with a `shortLabel` on desktop), Skeleton (inside a region marked `aria-busy`; keep an empty `role="status"` element mounted beside it and set its text when loading starts, because a live region that appears already filled isn't read out) and EmptyState (what's missing and one step).
 - **Overlays:** Sheet (controlled with `isOpen` and `onOpenChange`; a bottom sheet on phones, a dialog from 1024px; `actions` stay in thumb reach while the content scrolls) and toasts (`showToast(...)`, which keeps errors until dismissed; `<Toasts>` once, in the root layout, because the queue outlasts client-side navigation).
-  - The sheet's code loads on demand to keep routes in the JavaScript budget: call `preloadSheet()` from the opener's `onHoverStart`, `onFocus` and `onPressStart`. If it can't load, the sheet stays closed and the next press tries again.
+  - The sheet's code loads on demand to keep routes in the JavaScript budget: pass `preloadSheet` (it never throws) to the opener's `onHoverStart`, `onFocus` and `onPressStart`. If it can't load, the sheet stays closed, `onLoadError` lets the page say so (an error toast), and the next press tries again.
+  - While a sheet with actions is open on a phone, toasts rise above its actions (`--sheet-offset`); the shell sets `--toast-offset` for whatever it pins to the bottom.
   - Toasts load with the page, because an error toast must show when the network is down. They enter with `@starting-style` (`starting:`), not view transitions, which would freeze the page and swallow taps.
 - **Motion gates:** an animation tied to a state selector (`data-entering:`) outranks `motion-reduce:`, so gate those with `motion-safe:` instead.
 
-`/en/dev/ui` and `/ar/dev/ui` show them in every state when `APP_ENV` is development, test or staging (unset hides it, as in production). They take their text as props or children, already translated by the page, so they never import Lingui; `components/ui/styles.ts` holds the shared state classes.
+`/en/dev/ui` and `/ar/dev/ui` show them in every state (toasts and sheets on `/dev/ui/overlays`) when `APP_ENV` is development, test or staging (unset hides it, as in production). They take their text as props or children, already translated by the page, so they never import Lingui; `components/ui/styles.ts` holds the shared state classes.
 
 Every interactive component has these states:
 - **Hover:** style it from React Aria's `data-hovered`, which never fires on touch.

@@ -54,7 +54,12 @@ for (const device of DEVICES) {
         await page.goto(localized(locale, "/dev/ui/overlays"));
         await page.getByRole("button", { name: button }).click();
         await expect(page.getByRole("dialog")).toBeVisible();
-        await expect(page.locator("[data-entering]")).toHaveCount(0);
+        await page.evaluate(async () => {
+          await new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+          );
+          await Promise.all(document.getAnimations().map((animation) => animation.finished));
+        });
         await page.evaluate(() => document.fonts.ready);
         await page.screenshot({
           path: path.join(SCREENS, `dev-ui-overlays-sheet-${device.width}-${locale}.png`),

@@ -30,6 +30,7 @@ const LABELS = {
 };
 
 // Records every CSS property any animation or transition changes, frame by frame, from now on.
+// take() returns what moved since the last take() and starts afresh.
 async function recordMotion(page: Page) {
   await page.evaluate(() => {
     const seen = new Set<string>();
@@ -46,25 +47,39 @@ async function recordMotion(page: Page) {
     tick();
   });
   return () =>
-    page.evaluate(() => [...(window as unknown as { motionSeen: Set<string> }).motionSeen]);
+    page.evaluate(() => {
+      const seen = (window as unknown as { motionSeen: Set<string> }).motionSeen;
+      const moved = [...seen];
+      seen.clear();
+      return moved;
+    });
+}
+
+// Waits until what's moving has finished. Two frames first: React Aria marks a sheet as entering
+// a frame after it appears, so an immediate check would find nothing running yet.
+function settle(page: Page) {
+  return page.evaluate(async () => {
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    await Promise.all(
+      document
+        .getAnimations()
+        .filter((animation) => animation.effect?.getComputedTiming().endTime !== Infinity)
+        .map((animation) => animation.finished),
+    );
+  });
 }
 
 async function openSheet(page: Page, locale: keyof typeof LABELS) {
   await page.getByRole("button", { name: LABELS[locale].sheet }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   // Settled: checks run on the sheet as it rests, not halfway through its entrance.
-  await expect(page.locator("[data-entering]")).toHaveCount(0);
+  await settle(page);
 }
 
 async function showToast(page: Page, locale: keyof typeof LABELS) {
   await page.getByRole("button", { name: LABELS[locale].toast }).click();
-  const toast = page.getByRole("region").getByText(LABELS[locale].saved);
-  await expect(toast).toBeVisible();
-  await expect
-    .poll(() =>
-      page.getByRole("region").evaluate((region) => region.getAnimations({ subtree: true }).length),
-    )
-    .toBe(0);
+  await expect(page.getByRole("region").getByText(LABELS[locale].saved)).toBeVisible();
+  await settle(page);
 }
 
 for (const locale of ["en", "ar"] as const) {
@@ -83,19 +98,21 @@ for (const locale of ["en", "ar"] as const) {
       expect(await serious(), "with a toast showing").toEqual([]);
     });
 
-    test("move only with transform and opacity", async ({ page }) => {
+    test("move only with transform and opacity", async ({ page }, testInfo) => {
       await page.goto(`/${locale}/dev/ui/overlays`);
-      const moved = await recordMotion(page);
+      const take = await recordMotion(page);
+      const allowed = ["opacity", "transform", "translate", "scale", "rotate"];
       await openSheet(page, locale);
+      const sheet = await take();
+      // Phones slide the sheet up; desktops fade and scale the dialog.
+      expect(sheet).toContain(testInfo.project.name === "phone" ? "translate" : "scale");
       await page.keyboard.press("Escape");
       await expect(page.getByRole("dialog")).toBeHidden();
+      await take();
       await showToast(page, locale);
-      const properties = await moved();
-      // The sheet's slide (translate) and the toast's entrance were both seen.
-      expect(properties).toContain("translate");
-      for (const property of properties) {
-        expect(["opacity", "transform", "translate", "scale", "rotate"]).toContain(property);
-      }
+      const toast = await take();
+      expect(toast).toContain("translate");
+      for (const property of [...sheet, ...toast]) expect(allowed).toContain(property);
     });
 
     test("don't slide or scale with reduced motion", async ({ page }) => {
@@ -116,16 +133,24 @@ test.describe("offline", () => {
     test.skip(testInfo.project.name !== "desktop", "a network check");
   });
 
-  test("a sheet whose code can't load leaves the page working, and opens once back online", async ({
+  test("a sheet whose code can't load stays closed, says so and opens on the next try", async ({
     page,
-    context,
   }) => {
     await page.goto("/en/dev/ui/overlays");
-    await context.setOffline(true);
+    const failed: string[] = [];
+    page.on("requestfailed", (request) => failed.push(request.url()));
+    await page.route("**/_next/static/chunks/**", (route) => route.abort());
     await page.getByRole("button", { name: LABELS.en.sheet }).click();
-    await expect(page.getByRole("heading", { name: "Toasts and sheets", level: 1 })).toBeVisible();
+    // Both the fetch and Next.js's own retry fail before the sheet gives up.
+    await expect.poll(() => failed.length).toBeGreaterThanOrEqual(2);
+    await expect(
+      page
+        .getByRole("region")
+        .getByText("We couldn't open this. Check your connection, then try again."),
+    ).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await context.setOffline(false);
+    await expect(page.getByRole("heading", { name: "Toasts and sheets", level: 1 })).toBeVisible();
+    await page.unroute("**/_next/static/chunks/**");
     await page.getByRole("button", { name: LABELS.en.sheet }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
   });

@@ -51,6 +51,9 @@ export default async function OverlayGallery() {
           title={<Trans>Exam date</Trans>}
           closeLabel={close}
           saveLabel={i18n._(msg`Save the date`)}
+          loadErrorLabel={i18n._(
+            msg`We couldn't open this. Check your connection, then try again.`,
+          )}
         >
           <p className="text-note text-text-muted">
             <Trans>Your midterm is on 3 January. Your plan moves with it.</Trans>

@@ -250,6 +250,10 @@ msgstr "Try them"
 msgid "We couldn't find this page."
 msgstr "We couldn't find this page."
 
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "We couldn't open this. Check your connection, then try again."
+msgstr "We couldn't open this. Check your connection, then try again."
+
 #: app/[lang]/dev/ui/page.tsx
 msgid "We couldn't read page 4 of this file. Try a clearer photo."
 msgstr "We couldn't read page 4 of this file. Try a clearer photo."

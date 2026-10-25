@@ -34,6 +34,13 @@ function SheetExample({ paragraphs = 1 }: { paragraphs?: number }) {
 
 const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
 
+// Waits two frames (React Aria marks a sheet as entering a frame after it appears), then for
+// every running animation to finish.
+async function settle() {
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  await Promise.all(document.getAnimations().map((animation) => animation.finished));
+}
+
 async function open(trigger: HTMLElement) {
   await userEvent.click(trigger);
   await expect.poll(dialog).not.toBeNull();
@@ -99,8 +106,17 @@ test("a long sheet scrolls its content, keeping the title, close button and acti
   const body = sheet.children[1] as HTMLElement;
   await expect.poll(() => body.scrollHeight > body.clientHeight).toBe(true);
   // Measured once the sheet has finished sliding in.
-  await expect.poll(() => sheet.closest("[data-entering]")).toBeNull();
-  body.scrollTop = body.scrollHeight;
+  await settle();
+  // A wheel, as a student scrolls: setting scrollTop would move even a body that can't scroll.
+  await userEvent.wheel(body, { delta: { y: 10_000 } });
+  await expect.poll(() => body.scrollTop).toBeGreaterThan(0);
+  // The last line rests above the actions rather than under them.
+  await expect.poll(() => body.scrollTop + body.clientHeight).toBe(body.scrollHeight);
+  const footer = sheet.children[2]!;
+  const last = body.querySelectorAll("p")[59]!;
+  expect(last.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+    footer.getBoundingClientRect().top,
+  );
   const within = (element: Element) => {
     const box = element.getBoundingClientRect();
     return box.top >= 0 && box.bottom <= window.innerHeight;
@@ -108,6 +124,27 @@ test("a long sheet scrolls its content, keeping the title, close button and acti
   expect(within(page.getByRole("heading", { name: "Exam date" }).element())).toBe(true);
   expect(within(page.getByRole("button", { name: "Close" }).element())).toBe(true);
   expect(within(page.getByRole("button", { name: "Save the date" }).element())).toBe(true);
+});
+
+test("on a phone, a toast rises above an open sheet's actions", async () => {
+  await page.viewport(390, 844);
+  const container = render(
+    <>
+      <SheetExample />
+      <Toasts closeLabel="Close" />
+    </>,
+  );
+  await open(container.querySelector("button")!);
+  await settle();
+  showToast({ title: "We couldn't save the date.", tone: "error" });
+  await expect.poll(() => document.querySelector('[role="region"]')).not.toBeNull();
+  const save = page.getByRole("button", { name: "Save the date" }).element();
+  const box = save.getBoundingClientRect();
+  await expect
+    .poll(() =>
+      save.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)),
+    )
+    .toBe(true);
 });
 
 test("a toast appears in a labelled region, slides in, says its message and closes", async () => {

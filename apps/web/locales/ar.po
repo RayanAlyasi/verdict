@@ -250,6 +250,10 @@ msgstr "جرّبها"
 msgid "We couldn't find this page."
 msgstr "لم نجد هذه الصفحة."
 
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "We couldn't open this. Check your connection, then try again."
+msgstr "لم نتمكن من فتح هذا. تحقّق من اتصالك، ثم حاول مرة أخرى."
+
 #: app/[lang]/dev/ui/page.tsx
 msgid "We couldn't read page 4 of this file. Try a clearer photo."
 msgstr "لم نتمكن من قراءة الصفحة 4 من هذا الملف. جرّب صورة أوضح."

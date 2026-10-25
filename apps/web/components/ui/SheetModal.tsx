@@ -1,5 +1,6 @@
 "use client";
 
+import { useLayoutEffect, useRef } from "react";
 import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import { IconButton } from "./IconButton";
 import type { SheetProps } from "./Sheet";
@@ -14,6 +15,17 @@ export default function SheetModal({
   children,
   actions,
 }: SheetProps) {
+  const footer = useRef<HTMLDivElement>(null);
+  // While open, toasts rise above the actions, so an error never covers the button to try again.
+  useLayoutEffect(() => {
+    const element = footer.current;
+    if (!isOpen || !element) return;
+    const root = document.documentElement;
+    root.style.setProperty("--sheet-offset", `${element.offsetHeight}px`);
+    return () => {
+      root.style.removeProperty("--sheet-offset");
+    };
+  }, [isOpen]);
   return (
     <ModalOverlay
       isOpen={isOpen}
@@ -56,7 +68,10 @@ export default function SheetModal({
                 {children}
               </div>
               {actions && (
-                <div className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-divider px-6 pt-4 pb-[calc(--spacing(4)+env(safe-area-inset-bottom))]">
+                <div
+                  ref={footer}
+                  className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-divider px-6 pt-4 pb-[calc(--spacing(4)+env(safe-area-inset-bottom))]"
+                >
                   {actions}
                 </div>
               )}

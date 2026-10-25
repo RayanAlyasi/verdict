@@ -104,8 +104,15 @@ test("inline progress lights put the short label after the lights, in either dir
     const lights = caption.nextElementSibling!;
     expect(caption.textContent).toBe("4 of 10");
     const [c, l] = [caption.getBoundingClientRect(), lights.getBoundingClientRect()];
-    if (dir === "ltr") expect(c.left).toBeGreaterThanOrEqual(l.right);
-    else expect(c.right).toBeLessThanOrEqual(l.left);
+    // The lights start at the line's start edge, the label after them.
+    const bar = caption.parentElement!.getBoundingClientRect();
+    if (dir === "ltr") {
+      expect(l.left).toBe(bar.left);
+      expect(c.left).toBeGreaterThanOrEqual(l.right);
+    } else {
+      expect(l.right).toBe(bar.right);
+      expect(c.right).toBeLessThanOrEqual(l.left);
+    }
   }
 });
 

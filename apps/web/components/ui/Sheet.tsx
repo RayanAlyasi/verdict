@@ -18,11 +18,10 @@ type SheetModal = ComponentType<SheetProps>;
 let loaded: SheetModal | null = null;
 let loading: Promise<SheetModal> | null = null;
 
-// Fetches the sheet's code, React Aria's whole dialog module, which is too big to send with every
-// page that only might open one. Call it from the opener's onHoverStart, onFocus and onPressStart,
-// so the first opening doesn't wait for the network. A failed fetch (offline, or a build since
-// replaced) is tried again on the next call.
-export function preloadSheet(): Promise<SheetModal> {
+// The sheet's code is React Aria's whole dialog module, too big to send with every page that only
+// might open one. A failed fetch is forgotten, so the next attempt fetches again; deploys keep the
+// previous build's files for pages still open (#14), so a retry finds them.
+function loadSheet(): Promise<SheetModal> {
   loading ??= import("./SheetModal").then(
     (module) => (loaded = module.default),
     (error: unknown) => {
@@ -33,22 +32,32 @@ export function preloadSheet(): Promise<SheetModal> {
   return loading;
 }
 
+// Call from the opener's onHoverStart, onFocus and onPressStart, so the first opening doesn't wait
+// for the network. A failure here is left for the opening itself to report.
+export function preloadSheet() {
+  loadSheet().catch(() => {});
+}
+
 // A sheet that rises from the bottom on phones and a centred dialog from 1024px. It traps focus,
 // closes with Escape, a tap outside or its close button, and returns focus to what opened it. If
-// its code can't be fetched, it stays closed, and the next press tries again.
-export function Sheet(props: SheetProps) {
+// its code can't be fetched, it stays closed, onLoadError says so, and the next press tries again.
+export function Sheet({ onLoadError, ...props }: SheetProps & { onLoadError?: () => void }) {
   const [Modal, setModal] = useState<SheetModal | null>(() => loaded);
   const { isOpen, onOpenChange } = props;
   useEffect(() => {
     if (!isOpen || Modal) return;
     let current = true;
-    preloadSheet().then(
+    loadSheet().then(
       (component) => current && setModal(() => component),
-      () => current && onOpenChange(false),
+      () => {
+        if (!current) return;
+        onOpenChange(false);
+        onLoadError?.();
+      },
     );
     return () => {
       current = false;
     };
-  }, [isOpen, Modal, onOpenChange]);
+  }, [isOpen, Modal, onOpenChange, onLoadError]);
   return Modal ? <Modal {...props} /> : null;
 }

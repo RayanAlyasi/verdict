@@ -76,7 +76,7 @@ When this ships, a contributor can clone the repo, run one command and see the V
   - It pauses off screen and in hidden tabs, and shows a still frame with reduced motion.
   - The plain-language line and the legend stay in HTML for screen readers.
 - **Locales:** English and Arabic, with `/en` and `/ar` routes, `dir`, and hreflang alternates. All layout uses logical properties.
-- **`/dev/ui` route** (development and staging only): every component in every state, in both languages. This replaces a separate Storybook.
+- **`/dev/ui` route** (development and staging only): every component in every state, in both languages, with toasts and sheets on `/dev/ui/overlays` so each page stays within the JavaScript budget. This replaces a separate Storybook.
 
 ### Health and environments
 - **Health endpoints:** `GET /api/health` on the web reports web, api, database and storage status. The api has `GET /health`.
@@ -109,7 +109,7 @@ When this ships, a contributor can clone the repo, run one command and see the V
 - [ ] Fresh clone: `cp .env.example .env`, fill the secrets marked required (`openssl rand -base64 32`), then `docker compose up -d && pnpm install && uv sync --project services/api && pnpm dev` shows the shell at localhost:3000 with the globe.
 - [ ] `pnpm lint typecheck test build` and the api checks pass locally and in CI; `contract:check` passes; every Python dependency installs on 3.14.
 - [ ] `pnpm e2e:screens` writes `artifacts/screens/<screen>-<390|1440>-<en|ar>.png` for every route (the `ui-reviewer` depends on these names).
-- [ ] `/dev/ui` shows every component's states. Component tests in real Chromium cover hover (pointer only), pressed, focus-visible, disabled and loading. Axe reports no serious or critical issues.
+- [ ] `/dev/ui` and `/dev/ui/overlays` show every component's states. Component tests in real Chromium cover hover (pointer only), pressed, focus-visible, disabled and loading. Axe reports no serious or critical issues.
 - [ ] At 360px and 1440px the shell matches the approved designs (bottom nav vs sidebar); Arabic mirrors correctly.
 - [ ] With reduced motion on, the background and globe are static and transitions are instant.
 - [ ] A performance trace of the shell at 4× CPU throttling shows no long frames caused by the globe or background, and no animated property other than `transform` and `opacity`.
