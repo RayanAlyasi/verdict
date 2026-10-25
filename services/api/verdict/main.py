@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import tempfile
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -87,9 +88,12 @@ def _database_status(engine: Engine) -> Status:
 
 def _storage_status(folder: Path) -> Status:
     try:
-        # Creating a file, not just finding the folder, which can exist and still be read-only.
-        with tempfile.NamedTemporaryFile(dir=folder, prefix=".health-"):
-            pass
+        # Writing to a file, not just finding the folder: it can exist and still be read-only, or
+        # full, and a full disk can still create an empty file.
+        with tempfile.NamedTemporaryFile(dir=folder, prefix=".health-") as probe:
+            probe.write(b"ok")
+            probe.flush()
+            os.fsync(probe.fileno())
     except OSError:
         logger.warning("Health check: storage is unavailable", exc_info=True)
         return "unavailable"

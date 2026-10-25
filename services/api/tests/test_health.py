@@ -1,3 +1,5 @@
+import errno
+import os
 import shutil
 from collections.abc import Iterator
 from pathlib import Path
@@ -59,6 +61,18 @@ def test_health_fails_when_storage_is_gone(client: TestClient, storage: Path) ->
         "database": "ok",
         "storage": "unavailable",
     }
+
+
+def test_health_fails_when_storage_is_full(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def full(fd: int) -> None:
+        raise OSError(errno.ENOSPC, os.strerror(errno.ENOSPC))
+
+    monkeypatch.setattr(os, "fsync", full)
+    response = client.get("/health")
+    assert response.status_code == 503
+    assert response.json()["storage"] == "unavailable"
 
 
 def test_a_deployed_api_never_creates_the_storage_folder(
