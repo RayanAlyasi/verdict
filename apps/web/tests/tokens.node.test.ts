@@ -75,7 +75,7 @@ test("Arabic pages get the taller line heights, and only those styles change", (
   const styles: Record<string, { lineHeightArabic?: string }> = tokens.type.styles;
   const overrides = Object.entries(styles).filter(([, style]) => style.lineHeightArabic);
   expect(overrides.map(([name]) => name)).toContain("title-1");
-  const block = css.slice(css.indexOf(":root:lang(ar) {"));
+  const block = css.slice(css.indexOf(":lang(ar) {"));
   for (const [name, style] of overrides) {
     expect(block).toContain(`--text-${name}--line-height: ${style.lineHeightArabic};`);
   }

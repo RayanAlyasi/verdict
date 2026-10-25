@@ -60,7 +60,7 @@ export function themeCss(tokens) {
 
   // Arabic letters carry dots and marks above and below the line, so tight Latin line heights
   // make one line's marks touch the next. The text-* classes read these variables, so overriding
-  // them for Arabic pages changes every use.
+  // them for Arabic text changes every use: whole Arabic pages, and Arabic passages on English ones.
   const arabic = Object.entries(tokens.type.styles)
     .filter(([, style]) => style.lineHeightArabic)
     .map(([name, style]) => `  --text-${name}--line-height: ${style.lineHeightArabic};`);
@@ -74,7 +74,7 @@ export function themeCss(tokens) {
     ...lines,
     "}",
     "",
-    ":root:lang(ar) {",
+    ":lang(ar) {",
     ...arabic,
     "}",
     "",

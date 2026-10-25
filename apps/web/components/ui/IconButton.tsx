@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Button as AriaButton, type ButtonProps as AriaButtonProps } from "react-aria-components";
-import { Spinner } from "./Button";
+import { type PendingProps, Spinner } from "./Button";
 import { disabled, focusRing, hoverLayer, pressable } from "./styles";
 
 const VARIANTS = {
@@ -10,15 +10,18 @@ const VARIANTS = {
   outline: "border border-panel-border-strong bg-panel text-text before:bg-text/8",
 };
 
-export type IconButtonProps = Omit<AriaButtonProps, "children" | "className" | "aria-label"> & {
-  // The icon has no words, so the label is what screen readers announce.
-  label: string;
-  // An SVG marked aria-hidden; one with a direction (an arrow) needs rtl:-scale-x-100.
-  children: ReactNode;
-  variant?: keyof typeof VARIANTS;
-  pendingLabel?: string;
-  className?: string;
-};
+export type IconButtonProps = Omit<
+  AriaButtonProps,
+  "children" | "className" | "aria-label" | "isPending"
+> &
+  PendingProps & {
+    // The icon has no words, so the label is what screen readers announce.
+    label: string;
+    // An SVG marked aria-hidden; one with a direction (an arrow) needs rtl:-scale-x-100.
+    children: ReactNode;
+    variant?: keyof typeof VARIANTS;
+    className?: string;
+  };
 
 export function IconButton({
   label,

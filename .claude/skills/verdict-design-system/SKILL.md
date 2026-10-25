@@ -28,7 +28,7 @@ Tailwind's theme is generated from `tokens.json` (`apps/web/app/theme.css`; edit
 - **Motion:** `duration-press`, `duration-fast`, `duration-base`, `duration-slow`, `ease-standard`. A bare `transition-*` already uses `base` and `ease-standard`.
 - **Other names:** colours as in the token names (`bg-panel`, `text-text-muted`, `border-panel-border`), `rounded-md`, `text-caption`, `shadow-glow-primary`, `bg-nebula`, `min-h-touch-target`.
 - **Focus:** `outline-2 outline-offset-2 outline-focus`. Avoid `ring-offset-*`, which paints a white band on the dark background.
-- **Arabic line heights:** headings, `caption` and `meta` get taller line heights on Arabic pages (`:lang(ar)` overrides generated from `lineHeightArabic`), because Arabic marks above and below the line would touch the next line.
+- **Arabic line heights:** headings, `caption` and `meta` get taller line heights on Arabic pages (`:lang(ar)` overrides generated from `lineHeightArabic`, so Arabic passages on English pages get them too), because Arabic marks above and below the line would touch the next line.
 - **Font:** `font-sans` is Readex Pro, self-hosted by `next/font` in `app/[lang]/layout.tsx`. Its Latin and Arabic files are preloaded; other scripts' files load only for text that needs them. While it loads, the fallback is sized to Latin letters only, so Arabic text can reflow when it arrives.
 - **Direction:** logical classes only (`ms-*`, `pe-*`, `start-*`, `text-start`, `rounded-s-*`), so Arabic mirrors. The e2e suite fails when a rule sets one side differently from the other (`ml-*`, `left-*`, `rounded-l-*`, `text-right`). It can't judge transforms (`translate-x-*`), positions (`origin-left`, `bg-left`) or directional icons: give those an `rtl:` variant and check the Arabic screenshots.
 
@@ -42,13 +42,13 @@ Tailwind's theme is generated from `tokens.json` (`apps/web/app/theme.css`; edit
 ## Components
 Build once in `apps/web/components/ui`, on React Aria Components styled with Tailwind: Button (primary, secondary, ghost), IconButton, Input, Textarea with mic, Select, Panel, Chip, SegmentedControl, Light, ProgressLights, Globe, AnswerOption (A to D letter box), SourceChip, Toast, Sheet (phone) and Dialog (desktop), BottomNav, Sidebar, AppShell, PageTransition, Skeleton, EmptyState.
 
-Built so far: Button (`variant`, `size`, `pulse` for the screen's main action, `isPending` with `pendingLabel`), IconButton, Input, Chip and SegmentedControl. `/en/dev/ui` and `/ar/dev/ui` show them in every state outside production. They take their text as props or children, already translated by the page, so they never import Lingui; `components/ui/styles.ts` holds the shared state classes.
+Built so far: Button (`variant`, `size`, `pulse` for the screen's main action, `isPending` with `pendingLabel`), IconButton, Input, Chip and SegmentedControl. `/en/dev/ui` and `/ar/dev/ui` show them in every state when `APP_ENV` is development, test or staging (unset hides it, as in production). They take their text as props or children, already translated by the page, so they never import Lingui; `components/ui/styles.ts` holds the shared state classes.
 
 Every interactive component has these states:
 - **Hover:** style it from React Aria's `data-hovered`, which never fires on touch.
 - **Pressed:** `data-pressed`, with `scale(0.97)` in 80ms.
 - **Focus:** `data-focus-visible`, with a 2px ring at a 2px offset.
-- **Disabled.**
+- **Disabled:** 40% opacity and natively disabled (React Aria's `isDisabled`), so Tab skips it; when the reason isn't obvious, the screen says it in visible text.
 - **Loading:** keeps its size.
 
 Every interactive component also has a 44px minimum target and uses logical CSS properties for Arabic.

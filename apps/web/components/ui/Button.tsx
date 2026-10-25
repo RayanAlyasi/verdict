@@ -17,21 +17,26 @@ const VARIANTS = {
 };
 
 const SIZES = {
-  lg: "h-14 px-8 text-body",
-  md: "h-12 px-6 text-small",
-  sm: "h-11 px-4 text-label",
+  lg: "h-14 text-body",
+  md: "h-12 text-small",
+  sm: "h-11 text-label",
 };
 
-export type ButtonProps = Omit<AriaButtonProps, "children" | "className"> & {
-  children: ReactNode;
-  variant?: keyof typeof VARIANTS;
-  size?: keyof typeof SIZES;
-  // The screen's one main action pulses softly (primary only).
-  pulse?: boolean;
-  // Read out while isPending, for example "Saving".
-  pendingLabel?: string;
-  className?: string;
-};
+const PADDING = { lg: "px-8", md: "px-6", sm: "px-4" };
+
+// A button that can wait says what it's waiting for: without a label the spinner has no name.
+export type PendingProps =
+  { isPending?: false; pendingLabel?: undefined } | { isPending: boolean; pendingLabel: string };
+
+export type ButtonProps = Omit<AriaButtonProps, "children" | "className" | "isPending"> &
+  PendingProps & {
+    children: ReactNode;
+    variant?: keyof typeof VARIANTS;
+    size?: keyof typeof SIZES;
+    // The screen's one main action pulses softly (primary only).
+    pulse?: boolean;
+    className?: string;
+  };
 
 export function Button({
   children,
@@ -49,6 +54,8 @@ export function Button({
         "group relative inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-pill",
         VARIANTS[variant],
         SIZES[size],
+        // A ghost button's text lines up with the content beside it.
+        variant === "ghost" ? "px-1" : PADDING[size],
         pulse && variant === "primary"
           ? "after:animate-glow-pulse motion-reduce:after:animate-none"
           : "",
@@ -73,7 +80,7 @@ export function Button({
 }
 
 // Inside the button while it waits; React Aria announces the pending state through it.
-export function Spinner({ label }: { label?: string }) {
+export function Spinner({ label }: { label: string | undefined }) {
   return (
     <ProgressBar
       isIndeterminate

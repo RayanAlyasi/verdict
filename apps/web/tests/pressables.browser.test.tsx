@@ -4,7 +4,7 @@ import { userEvent } from "vitest/browser";
 import { Button } from "../components/ui/Button";
 import { Chip } from "../components/ui/Chip";
 import { IconButton } from "../components/ui/IconButton";
-import { point, render } from "./render";
+import { nextFrames, point, press, render } from "./render";
 
 type Props = { isDisabled?: boolean; onPress?: () => void };
 
@@ -52,7 +52,19 @@ const style = (element: Element, pseudo?: string) => getComputedStyle(element, p
 describe.each(PRESSABLES)("%s", (_, make) => {
   test("shows hover for a pointer, never for a finger", async () => {
     const element = button(render(make({})));
+    // The test runner's real cursor may rest where this renders; move it away first.
+    await userEvent.unhover(element);
+    await nextFrames();
+    expect(element.dataset.hovered).toBeUndefined();
     point(element, "pointerover", "touch");
+    await nextFrames();
+    expect(element.dataset.hovered).toBeUndefined();
+    // The same event from a mouse, read the same way, does show hover.
+    point(element, "pointerover", "mouse");
+    await nextFrames();
+    expect(element.dataset.hovered).toBe("true");
+    point(element, "pointerout", "mouse");
+    await nextFrames();
     expect(element.dataset.hovered).toBeUndefined();
     await userEvent.hover(element);
     expect(element.dataset.hovered).toBe("true");
@@ -95,14 +107,22 @@ describe.each(PRESSABLES)("%s", (_, make) => {
 
   test("when disabled, fades and ignores hover and presses", async () => {
     const onPress = vi.fn();
-    const element = button(render(make({ isDisabled: true, onPress })));
-    expect(element.disabled).toBe(true);
-    expect(style(element).opacity).toBe("0.4");
-    await userEvent.hover(element);
-    expect(element.dataset.hovered).toBeUndefined();
-    point(element, "pointerdown", "mouse");
-    point(element, "pointerup", "mouse");
-    expect(onPress).not.toHaveBeenCalled();
+    const container = render(
+      <>
+        {make({ onPress })}
+        {make({ isDisabled: true, onPress })}
+      </>,
+    );
+    const [enabled, element] = [...container.querySelectorAll("button")] as HTMLButtonElement[];
+    press(enabled!);
+    expect(onPress).toHaveBeenCalledTimes(1);
+    expect(element!.disabled).toBe(true);
+    expect(style(element!).opacity).toBe("0.4");
+    await userEvent.hover(element!);
+    await nextFrames();
+    expect(element!.dataset.hovered).toBeUndefined();
+    press(element!);
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 
   test("is at least 44px tall", () => {
@@ -114,7 +134,7 @@ describe.each(PRESSABLES)("%s", (_, make) => {
 describe.each([
   [
     "Button",
-    (props: { isPending?: boolean; onPress?: () => void }) => (
+    (props: { isPending: boolean; onPress?: () => void }) => (
       <Button pendingLabel="Saving" {...props}>
         Save changes
       </Button>
@@ -122,7 +142,7 @@ describe.each([
   ],
   [
     "IconButton",
-    (props: { isPending?: boolean; onPress?: () => void }) => (
+    (props: { isPending: boolean; onPress?: () => void }) => (
       <IconButton label="Close" pendingLabel="Saving" {...props}>
         {icon}
       </IconButton>
@@ -133,7 +153,7 @@ describe.each([
     const onPress = vi.fn();
     const container = render(
       <>
-        {make({})}
+        {make({ isPending: false, onPress })}
         {make({ isPending: true, onPress })}
       </>,
     );
@@ -143,10 +163,12 @@ describe.each([
     expect(pending!.querySelector('[role="progressbar"]')?.getAttribute("aria-label")).toBe(
       "Saving",
     );
-    // Pointer events, because Playwright won't click what React Aria marks aria-disabled.
-    point(pending!, "pointerdown", "mouse");
-    point(pending!, "pointerup", "mouse");
-    expect(onPress).not.toHaveBeenCalled();
+    // Pressed directly: Playwright won't click a button React Aria marks aria-disabled.
+    press(idle!);
+    expect(onPress).toHaveBeenCalledTimes(1);
+    press(pending!);
+    press(pending!);
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 });
 

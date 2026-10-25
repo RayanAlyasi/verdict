@@ -42,3 +42,20 @@ export function point(element: Element, type: string, pointerType: "mouse" | "to
     }),
   );
 }
+
+// A whole mouse press. React Aria fires onPress from the click, so pointer events alone prove
+// nothing about presses.
+export function press(element: HTMLElement) {
+  point(element, "pointerdown", "mouse");
+  point(element, "pointerup", "mouse");
+  element.click();
+}
+
+// React commits state from pointerover and similar events a moment after them, not at once.
+export function nextFrames(count = 2): Promise<void> {
+  return new Promise((resolve) => {
+    const step = (left: number) =>
+      left === 0 ? resolve() : requestAnimationFrame(() => step(left - 1));
+    step(count);
+  });
+}

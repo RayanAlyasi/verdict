@@ -60,6 +60,9 @@ export default async function ComponentGallery() {
           <Button variant="secondary" isDisabled>
             <Trans>Not now</Trans>
           </Button>
+          <Button variant="ghost" isDisabled>
+            <Trans>Skip this question</Trans>
+          </Button>
           <Button isPending pendingLabel={saving}>
             <Trans>Save</Trans>
           </Button>
@@ -75,6 +78,9 @@ export default async function ComponentGallery() {
             <CloseIcon />
           </IconButton>
           <IconButton label={close} variant="outline">
+            <CloseIcon />
+          </IconButton>
+          <IconButton label={close} isDisabled>
             <CloseIcon />
           </IconButton>
           <IconButton label={close} variant="outline" isDisabled>

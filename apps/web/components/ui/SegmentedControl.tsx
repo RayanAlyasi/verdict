@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import {
   type Key,
   SelectionIndicator,
@@ -22,11 +22,9 @@ export type SegmentedControlProps<K extends Key> = Omit<
   // Names the choice for screen readers, for example "Explain it".
   "aria-label": string;
   options: { id: K; label: ReactNode }[];
-  selected?: K;
-  defaultSelected?: K;
   onChange?: (id: K) => void;
   className?: string;
-};
+} & ({ selected: K; defaultSelected?: never } | { selected?: never; defaultSelected: K });
 
 // One of a few views, always exactly one selected (Simply / In depth / Revision).
 export function SegmentedControl<K extends Key>({
@@ -37,16 +35,20 @@ export function SegmentedControl<K extends Key>({
   className = "",
   ...props
 }: SegmentedControlProps<K>) {
+  const [chosen, setChosen] = useState(defaultSelected);
+  const current = selected ?? chosen;
   return (
     <ToggleButtonGroup
       {...props}
       selectionMode="single"
       disallowEmptySelection
-      selectedKeys={selected === undefined ? undefined : [selected]}
-      defaultSelectedKeys={defaultSelected === undefined ? undefined : [defaultSelected]}
+      selectedKeys={current === undefined ? [] : [current]}
       onSelectionChange={(keys) => {
-        const [key] = keys;
-        if (key !== undefined) onChange?.(key as K);
+        const [key] = keys as Set<K>;
+        // React Aria reports a press on the selected segment as a change to the same key.
+        if (key === undefined || key === current) return;
+        setChosen(key);
+        onChange?.(key);
       }}
       className={`flex items-center gap-1 rounded-pill border border-panel-border bg-input p-1 ${className}`}
     >

@@ -30,7 +30,9 @@ export function Input({
 }: InputProps) {
   return (
     <TextField {...props} className={`group flex flex-col gap-2 ${className}`}>
-      <Label className="text-label text-text group-data-disabled:opacity-40">{label}</Label>
+      <Label className="text-small font-semibold text-text group-data-disabled:opacity-40">
+        {label}
+      </Label>
       <AriaInput
         placeholder={placeholder}
         className={[

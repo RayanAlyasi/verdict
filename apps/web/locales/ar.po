@@ -46,7 +46,7 @@ msgstr "اسم المقرر"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Exam date"
-msgstr "موعد الامتحان"
+msgstr "تاريخ الامتحان"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Explain it"

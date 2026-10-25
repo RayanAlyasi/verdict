@@ -1,9 +1,9 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import { Input } from "../components/ui/Input";
 import { LocaleProvider } from "../components/ui/LocaleProvider";
 import { SegmentedControl } from "../components/ui/SegmentedControl";
-import { point, render } from "./render";
+import { nextFrames, point, render } from "./render";
 
 const style = (element: Element, pseudo?: string) => getComputedStyle(element, pseudo);
 
@@ -17,8 +17,17 @@ test("a text field is labelled, 52px tall and at least 16px, so iOS doesn't zoom
 
 test("a text field shows hover for a pointer and a focus ring however it's focused", async () => {
   const input = render(<Input label="Course name" />).querySelector("input")!;
-  point(input, "pointerover", "touch");
+  // The test runner's real cursor may rest where this renders; move it away first.
+  await userEvent.unhover(input);
+  await nextFrames();
   expect(input.dataset.hovered).toBeUndefined();
+  point(input, "pointerover", "touch");
+  await nextFrames();
+  expect(input.dataset.hovered).toBeUndefined();
+  point(input, "pointerover", "mouse");
+  await nextFrames();
+  expect(input.dataset.hovered).toBe("true");
+  point(input, "pointerout", "mouse");
   await userEvent.hover(input);
   expect(input.dataset.hovered).toBe("true");
   await userEvent.click(input);
@@ -62,6 +71,27 @@ test("a segmented control keeps exactly one segment selected", async () => {
   expect(simply!.dataset.selected).toBeUndefined();
   await userEvent.click(depth!);
   expect(depth!.dataset.selected).toBe("true");
+});
+
+test("a controlled segmented control reports only real changes and shows what it's given", async () => {
+  const onChange = vi.fn();
+  const container = render(
+    <SegmentedControl
+      aria-label="Explain it"
+      selected="simply"
+      onChange={onChange}
+      options={OPTIONS}
+    />,
+  );
+  const [simply, depth] = [...container.querySelectorAll("button")];
+  await userEvent.click(simply!);
+  await userEvent.click(simply!);
+  expect(onChange).not.toHaveBeenCalled();
+  await userEvent.click(depth!);
+  expect(onChange).toHaveBeenCalledExactlyOnceWith("depth");
+  // The parent kept `selected`, so the selection stays where it says.
+  expect(simply!.dataset.selected).toBe("true");
+  expect(depth!.dataset.selected).toBeUndefined();
 });
 
 test("a segment's touch target reaches the control's edges, 48px tall", () => {
