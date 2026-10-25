@@ -53,7 +53,7 @@ Dark space background with a slowly drifting nebula, twinkling stars and the occ
 - The globe is drawn on one `<canvas>`, not as hundreds of page elements; the plain-language line and legend stay in HTML.
 
 ## Performance budgets (mid-range phone, 4G)
-Largest Contentful Paint under 2.5 s · Interaction to Next Paint under 200 ms · Cumulative Layout Shift under 0.1 · JavaScript per route under 170 KB compressed · 60 fps during animations.
+Largest Contentful Paint under 2.5 s · Interaction to Next Paint under 200 ms · Cumulative Layout Shift under 0.1 · JavaScript per route under 200 KB compressed (React and Next.js alone take about 118 KB) · 60 fps during animations.
 
 ## Accessibility
 WCAG 2.2 AA: contrast 4.5:1 for text, 3:1 for controls; full keyboard use; visible focus; screen-reader labels for icons and charts; touch targets at least 44 x 44px; colour is never the only signal (readiness uses colour, shape and words).

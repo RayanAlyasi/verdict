@@ -20,9 +20,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return { robots: { index: false }, alternates: alternates(locale, "/dev/ui") };
 }
 
-// Every component in every state it can hold still, in both languages. Toasts and sheets are on
-// ./overlays: a page holding every component is no route a student loads, and splitting keeps
-// each a fair test of the JavaScript budget. Hover, pressed and focus need a pointer or keyboard,
+// Every component in every state it can hold still, in both languages. Toasts and sheets, which
+// need a press to show, are on ./overlays. Hover, pressed and focus need a pointer or keyboard,
 // and component tests cover them.
 export default async function ComponentGallery() {
   await showGalleryOrNotFound();

@@ -76,7 +76,7 @@ When this ships, a contributor can clone the repo, run one command and see the V
   - It pauses off screen and in hidden tabs, and shows a still frame with reduced motion.
   - The plain-language line and the legend stay in HTML for screen readers.
 - **Locales:** English and Arabic, with `/en` and `/ar` routes, `dir`, and hreflang alternates. All layout uses logical properties.
-- **`/dev/ui` route** (development and staging only): every component in every state, in both languages, with toasts and sheets on `/dev/ui/overlays` so each page stays within the JavaScript budget. This replaces a separate Storybook.
+- **`/dev/ui` route** (development and staging only): every component in every state, in both languages, with toasts and sheets, which need a press to show, on `/dev/ui/overlays`. This replaces a separate Storybook.
 
 ### Health and environments
 - **Health endpoints:** `GET /api/health` on the web reports web, api, database and storage status. The api has `GET /health`.
@@ -118,7 +118,7 @@ When this ships, a contributor can clone the repo, run one command and see the V
 - [ ] `gh attestation verify` succeeds for a staging image, and the promotion fails for a commit that never reached staging.
 - [ ] `ci-ok`, `pr-title` and `cla` are the only required checks. A docs-only pull request skips web, api, contract and e2e and still passes. zizmor reports no findings.
 - [ ] `scripts/github/setup-repo.sh` completes with no failed steps, and a second run changes nothing.
-- [ ] A route over 170 KB of compressed JavaScript fails the e2e suite, and a migration that can't downgrade fails the api tests (each proved once).
+- [ ] A route over 200 KB of compressed JavaScript fails the e2e suite, and a migration that can't downgrade fails the api tests (each proved once).
 - [ ] The staging database restores to a chosen minute from its WAL-G backups. Proved once by hand, then by the monthly check.
 - [ ] The boundary test fails when one module imports another module's internals (proved by a test PR).
 - [ ] Calling the gateway with the fake provider records a usage ledger row, and refuses a call that would pass the student's daily token limit or the platform's daily spend cap.

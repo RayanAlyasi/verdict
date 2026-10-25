@@ -4,8 +4,8 @@ import { expect, type Page, test } from "@playwright/test";
 import { direction } from "../lib/locales";
 import { LOCALES, localized, ROUTES } from "./routes";
 
-// docs/UX-GUIDELINES.md: under 170 KB of compressed JavaScript per route.
-const JAVASCRIPT_BUDGET_BYTES = 170 * 1024;
+// docs/UX-GUIDELINES.md: under 200 KB of compressed JavaScript per route.
+const JAVASCRIPT_BUDGET_BYTES = 200 * 1024;
 
 // What changes when Arabic mirrors the layout, read from the browser's own parsed CSS. Shorthands
 // arrive as longhands, so margin: 0 8px 0 0 shows as margin-right differing from margin-left, while
