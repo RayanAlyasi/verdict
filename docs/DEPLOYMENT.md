@@ -25,7 +25,7 @@ Three environments run the same images with different data and secrets. Changes 
    - It then adds the release tag to the same image digests, deploys them with Kamal and runs the smoke test again.
    - If no staging image was built for the release commit, the promotion fails.
 
-Production runs the images built for staging; nothing is rebuilt. Each image carries the commit it was built from (`APP_COMMIT`, reported by `GET /api/health`), and the deploy sets the version (`APP_VERSION`). Anyone can verify that an image came from this repository's CI:
+Production runs the images built for staging; nothing is rebuilt. Each image carries the commit it was built from (`APP_COMMIT`; `GET /api/health` reports the web image's, and both are built from the same commit), and the deploy sets the version (`APP_VERSION`). Anyone can verify that an image came from this repository's CI:
 
 ```bash
 gh attestation verify oci://ghcr.io/rayanalyasi/verdict/api:v0.4.0 -R RayanAlyasi/verdict

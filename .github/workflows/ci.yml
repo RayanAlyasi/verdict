@@ -285,6 +285,17 @@ jobs:
             dockerfile: services/api/Dockerfile
           - image: web
             dockerfile: apps/web/Dockerfile
+    # The api image starts for real against it: migrations, then serving.
+    services:
+      db:
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_USER: verdict
+          POSTGRES_PASSWORD: verdict
+          POSTGRES_DB: verdict
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U verdict" --health-interval 5s --health-retries 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -311,9 +322,21 @@ jobs:
           for _ in $(seq 1 30); do curl -fs -o /dev/null http://127.0.0.1:3000/en && exit 0; sleep 1; done
           docker logs web
           exit 1
-      - name: Load the api's code and migrations from the image
+      - name: Start the api image as deployed (migrate, then serve) and a worker, as a non-root user
         if: matrix.image == 'api'
-        run: docker run --rm verdict-api:ci sh -c "python -c 'import verdict.main, verdict.worker' && alembic heads"
+        run: |
+          set -euo pipefail
+          settings=(--network host --env APP_ENV=test --env DEPLOYMENT_MODE=self_hosted
+            --env DATABASE_URL=postgresql+psycopg://verdict:verdict@127.0.0.1:5432/verdict)
+          [ "$(docker run --rm verdict-api:ci id -u)" != 0 ]
+          docker run --detach --name api "${settings[@]}" verdict-api:ci
+          ok=false
+          for _ in $(seq 1 60); do curl -fs http://127.0.0.1:8000/health && { ok=true; break; }; sleep 1; done
+          [ "$ok" = true ] || { docker logs api; exit 1; }
+          docker run --detach --name worker "${settings[@]}" verdict-api:ci python -m verdict.worker maintenance
+          for _ in $(seq 1 30); do docker logs worker 2>&1 | grep -q "Queue: maintenance" && exit 0; sleep 1; done
+          docker logs worker
+          exit 1
 
   ci-ok:
     name: ci-ok
