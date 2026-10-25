@@ -40,3 +40,27 @@ for (const device of DEVICES) {
     }
   });
 }
+
+// An open sheet, which no route shows on its own.
+for (const device of DEVICES) {
+  test.describe(`${device.width}px, sheet open`, () => {
+    test.use(device.use);
+
+    for (const [locale, button] of [
+      ["en", "Change the exam date"],
+      ["ar", "غيّر تاريخ الامتحان"],
+    ] as const) {
+      test(`dev-ui-overlays-sheet (${locale})`, async ({ page }) => {
+        await page.goto(localized(locale, "/dev/ui/overlays"));
+        await page.getByRole("button", { name: button }).click();
+        await expect(page.getByRole("dialog")).toBeVisible();
+        await expect(page.locator("[data-entering]")).toHaveCount(0);
+        await page.evaluate(() => document.fonts.ready);
+        await page.screenshot({
+          path: path.join(SCREENS, `dev-ui-overlays-sheet-${device.width}-${locale}.png`),
+          animations: "disabled",
+        });
+      });
+    }
+  });
+}

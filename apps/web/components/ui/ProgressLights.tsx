@@ -1,36 +1,50 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Label, ProgressBar } from "react-aria-components";
+import { ProgressBar } from "react-aria-components";
 import { Light } from "./Light";
 
 // Progress through a short run, such as a session's questions: one light per item, done ones
-// lit, the current one ringed. The caption says it in words, and screen readers hear it as a
-// progress bar ("Question 4 of 10").
+// lit, the current one ringed. Screen readers hear it as a progress bar: "Session progress,
+// Question 4 of 10".
 export function ProgressLights({
+  name,
   label,
+  shortLabel,
+  layout = "stacked",
   completed,
   total,
   showCurrent = true,
   className = "",
 }: {
-  // Shown above the lights and read as the bar's value, for example "Question 4 of 10".
+  // What it measures, for example "Session progress".
+  name: string;
+  // Where it's at, for example "Question 4 of 10": shown above the lights, and read as the value.
   label: string;
+  // Shown after the lights in the inline layout, for example "4 of 10".
+  shortLabel?: string;
+  // Stacked (phones): the label above the lights. Inline (desktop): the lights, then the short label.
+  layout?: "stacked" | "inline";
   completed: number;
   total: number;
   // Rings the light after the completed ones, for the item in progress.
   showCurrent?: boolean;
   className?: string;
 }): ReactNode {
+  const caption = layout === "stacked" ? label : (shortLabel ?? label);
   return (
     <ProgressBar
+      aria-label={name}
       value={completed}
       maxValue={total}
       valueLabel={label}
-      className={`flex flex-col items-center gap-2 ${className}`}
+      className={`flex items-center gap-1.5 ${layout === "stacked" ? "flex-col" : "flex-row-reverse justify-end gap-2.5"} ${className}`}
     >
-      <Label className="text-caption text-text-faint tabular-nums">{label}</Label>
-      <span className="flex flex-wrap justify-center gap-2">
+      {/* The value is read from valueLabel, so the visible words aren't read a second time. */}
+      <span aria-hidden="true" className="text-caption font-normal text-text-faint tabular-nums">
+        {caption}
+      </span>
+      <span className="flex flex-wrap justify-center gap-1.5">
         {Array.from({ length: total }, (_, index) => (
           <Light
             key={index}

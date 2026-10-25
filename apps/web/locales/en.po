@@ -8,6 +8,10 @@ msgstr ""
 "Language: en\n"
 
 #: app/[lang]/dev/ui/page.tsx
+msgid "{question} of {questions}"
+msgstr "{question} of {questions}"
+
+#: app/[lang]/dev/ui/page.tsx
 msgid "9 of 12 midterm topics mastered."
 msgstr "9 of 12 midterm topics mastered."
 
@@ -32,11 +36,11 @@ msgstr "As it appears on your timetable."
 msgid "Buttons"
 msgstr "Buttons"
 
-#: app/[lang]/dev/ui/page.tsx
+#: app/[lang]/dev/ui/overlays/page.tsx
 msgid "Change the exam date"
 msgstr "Change the exam date"
 
-#: app/[lang]/dev/ui/page.tsx
+#: app/[lang]/dev/ui/overlays/page.tsx
 msgid "Check your connection, then try again."
 msgstr "Check your connection, then try again."
 
@@ -44,6 +48,7 @@ msgstr "Check your connection, then try again."
 msgid "Chips"
 msgstr "Chips"
 
+#: app/[lang]/dev/ui/overlays/page.tsx
 #: app/[lang]/dev/ui/page.tsx
 msgid "Close"
 msgstr "Close"
@@ -68,7 +73,7 @@ msgstr "Course code"
 msgid "Course name"
 msgstr "Course name"
 
-#: app/[lang]/dev/ui/page.tsx
+#: app/[lang]/dev/ui/overlays/page.tsx
 msgid "Course saved."
 msgstr "Course saved."
 
@@ -80,6 +85,7 @@ msgstr "Current question"
 msgid "Empty state"
 msgstr "Empty state"
 
+#: app/[lang]/dev/ui/overlays/page.tsx
 #: app/[lang]/dev/ui/page.tsx
 msgid "Exam date"
 msgstr "Exam date"
@@ -176,6 +182,10 @@ msgstr "Revision"
 msgid "Save"
 msgstr "Save"
 
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "Save the date"
+msgstr "Save the date"
+
 #: app/[lang]/dev/ui/page.tsx
 msgid "Saving"
 msgstr "Saving"
@@ -185,10 +195,18 @@ msgid "Segmented control"
 msgstr "Segmented control"
 
 #: app/[lang]/dev/ui/page.tsx
+msgid "Session progress"
+msgstr "Session progress"
+
+#: app/[lang]/dev/ui/overlays/page.tsx
 msgid "Show a confirmation"
 msgstr "Show a confirmation"
 
-#: app/[lang]/dev/ui/page.tsx
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "Show a note"
+msgstr "Show a note"
+
+#: app/[lang]/dev/ui/overlays/page.tsx
 msgid "Show an error"
 msgstr "Show an error"
 
@@ -208,9 +226,13 @@ msgstr "Start today's session"
 msgid "Text fields"
 msgstr "Text fields"
 
-#: app/[lang]/dev/ui/page.tsx
+#: app/[lang]/dev/ui/overlays/page.tsx
 msgid "Toasts and sheets"
 msgstr "Toasts and sheets"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Toasts and sheets are on their own page."
+msgstr "Toasts and sheets are on their own page."
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Today's session, about 25 minutes."
@@ -220,6 +242,10 @@ msgstr "Today's session, about 25 minutes."
 msgid "Topic drill"
 msgstr "Topic drill"
 
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "Try them"
+msgstr "Try them"
+
 #: app/[lang]/not-found.tsx
 msgid "We couldn't find this page."
 msgstr "We couldn't find this page."
@@ -228,10 +254,14 @@ msgstr "We couldn't find this page."
 msgid "We couldn't read page 4 of this file. Try a clearer photo."
 msgstr "We couldn't read page 4 of this file. Try a clearer photo."
 
-#: app/[lang]/dev/ui/page.tsx
+#: app/[lang]/dev/ui/overlays/page.tsx
 msgid "We couldn't save your course."
 msgstr "We couldn't save your course."
 
-#: app/[lang]/dev/ui/page.tsx
+#: app/[lang]/dev/ui/overlays/page.tsx
 msgid "Your midterm is on 3 January. Your plan moves with it."
 msgstr "Your midterm is on 3 January. Your plan moves with it."
+
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "Your plan now starts on Monday."
+msgstr "Your plan now starts on Monday."

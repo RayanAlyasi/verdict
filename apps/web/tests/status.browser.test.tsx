@@ -63,14 +63,17 @@ test("the current light is a ring, and lights come in two sizes", () => {
   expect(small!.getBoundingClientRect().width).toBe(8);
 });
 
-test("progress lights read as a progress bar, with one light per item", () => {
-  const container = render(<ProgressLights label="Question 4 of 10" completed={3} total={10} />);
+test("progress lights read as a progress bar named for what they measure", () => {
+  const container = render(
+    <ProgressLights name="Session progress" label="Question 4 of 10" completed={3} total={10} />,
+  );
   const bar = container.querySelector('[role="progressbar"]')!;
+  expect(bar.getAttribute("aria-label")).toBe("Session progress");
   expect(bar.getAttribute("aria-valuenow")).toBe("3");
   expect(bar.getAttribute("aria-valuemax")).toBe("10");
   expect(bar.getAttribute("aria-valuetext")).toBe("Question 4 of 10");
-  const name = document.getElementById(bar.getAttribute("aria-labelledby") ?? "");
-  expect(name?.textContent).toBe("Question 4 of 10");
+  // The visible words repeat the value, so screen readers skip them.
+  expect(bar.querySelector('[aria-hidden="true"]')?.textContent).toBe("Question 4 of 10");
   const lights = [...bar.querySelectorAll("[data-status]")].map((light) =>
     light.getAttribute("data-status"),
   );
@@ -81,6 +84,29 @@ test("progress lights read as a progress bar, with one light per item", () => {
     "current",
     ...Array(6).fill("not-started"),
   ]);
+});
+
+test("inline progress lights put the short label after the lights, in either direction", () => {
+  for (const dir of ["ltr", "rtl"] as const) {
+    const container = render(
+      <div dir={dir}>
+        <ProgressLights
+          layout="inline"
+          name="Session progress"
+          label="Question 4 of 10"
+          shortLabel="4 of 10"
+          completed={3}
+          total={10}
+        />
+      </div>,
+    );
+    const caption = container.querySelector('[aria-hidden="true"]')!;
+    const lights = caption.nextElementSibling!;
+    expect(caption.textContent).toBe("4 of 10");
+    const [c, l] = [caption.getBoundingClientRect(), lights.getBoundingClientRect()];
+    if (dir === "ltr") expect(c.left).toBeGreaterThanOrEqual(l.right);
+    else expect(c.right).toBeLessThanOrEqual(l.left);
+  }
 });
 
 test("a panel is solid; a toned one is a light tint of its colour", () => {
@@ -97,6 +123,8 @@ test("a panel is solid; a toned one is a light tint of its colour", () => {
   expect(style(solid).backgroundColor).toBe("rgb(16, 27, 46)");
   expect(style(solid).borderRadius).toBe("18px");
   expect(style(tinted).backgroundColor).toMatch(/\/ 0\.08\)$/);
+  // A tinted callout is tighter than a card.
+  expect(style(tinted).borderRadius).toBe("14px");
 });
 
 test("a skeleton stays out of the accessibility tree and pulses its opacity", () => {

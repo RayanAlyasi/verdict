@@ -28,7 +28,7 @@ Real course materials from several majors, with checked answers. They're kept in
 - Tests use factories, not shared fixtures that drift.
 - No sleeps in e2e tests; wait for visible state.
 - Component tests render into Chromium with the app's CSS (`apps/web/tests/render.tsx`) and check what a student would see: React Aria's state attributes and the computed styles they produce.
-- The gallery's e2e tests open a sheet and a toast in both languages and check axe, that only `transform` and `opacity` animate, and that nothing slides or scales with reduced motion.
+- The gallery's e2e tests open a sheet and a toast in both languages and check axe once they've settled. They record every animation frame from the click onward, to prove that only `transform` and `opacity` move and that nothing slides or scales with reduced motion. They also go offline, to prove an error toast still shows and that a sheet whose code can't load leaves the page working.
 - Every page is listed in `apps/web/e2e/routes.ts`, which gives it, in each language, the JavaScript budget, the accessibility and layout checks and review screenshots.
 - The e2e suite starts the api and the web on ports 8100 and 3100, with the settings in `.env` and docker compose's database.
 - Flaky tests are fixed or quarantined within a day, never ignored.

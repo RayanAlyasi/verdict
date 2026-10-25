@@ -13,73 +13,127 @@ test("in Arabic, the arrow keys move through a segmented control from right to l
 });
 
 const LABELS = {
-  en: { sheet: "Change the exam date", toast: "Show a confirmation", saved: "Course saved." },
-  ar: { sheet: "غيّر تاريخ الامتحان", toast: "اعرض تأكيدًا", saved: "حُفظ المقرر." },
+  en: {
+    sheet: "Change the exam date",
+    toast: "Show a confirmation",
+    saved: "Course saved.",
+    error: "Show an error",
+    failed: "We couldn't save your course.",
+  },
+  ar: {
+    sheet: "غيّر تاريخ الامتحان",
+    toast: "اعرض تأكيدًا",
+    saved: "حفظنا مقررك.",
+    error: "اعرض خطأً",
+    failed: "لم نتمكن من حفظ مقررك.",
+  },
 };
 
-// Opens the gallery's sample sheet, closes it, then raises a toast.
-async function openOverlays(page: Page, locale: keyof typeof LABELS) {
-  const labels = LABELS[locale];
-  await page.goto(`/${locale}/dev/ui`);
-  await page.getByRole("button", { name: labels.sheet }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  return async () => {
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog")).toBeHidden();
-    await page.getByRole("button", { name: labels.toast }).click();
-    await expect(page.getByRole("region").getByText(labels.saved)).toBeVisible();
-  };
+// Records every CSS property any animation or transition changes, frame by frame, from now on.
+async function recordMotion(page: Page) {
+  await page.evaluate(() => {
+    const seen = new Set<string>();
+    Object.assign(window, { motionSeen: seen });
+    const ignore = new Set(["offset", "computedOffset", "easing", "composite"]);
+    const tick = () => {
+      for (const animation of document.getAnimations()) {
+        for (const frame of (animation.effect as KeyframeEffect | null)?.getKeyframes() ?? []) {
+          for (const key of Object.keys(frame)) if (!ignore.has(key)) seen.add(key);
+        }
+      }
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+  return () =>
+    page.evaluate(() => [...(window as unknown as { motionSeen: Set<string> }).motionSeen]);
 }
 
-// What moves on the page right now: the CSS properties each running animation changes. View
-// transitions' own pseudo-elements are the browser's business, so they're left out.
-function animatedProperties(page: Page) {
-  return page.evaluate(() =>
-    document
-      .getAnimations()
-      .filter((animation) => {
-        const effect = animation.effect as KeyframeEffect | null;
-        return animation.playState === "running" && effect?.target && !effect.pseudoElement;
-      })
-      .flatMap((animation) =>
-        (animation.effect as KeyframeEffect)
-          .getKeyframes()
-          .flatMap((frame) => Object.keys(frame))
-          .filter((key) => !["offset", "computedOffset", "easing", "composite"].includes(key)),
-      ),
-  );
+async function openSheet(page: Page, locale: keyof typeof LABELS) {
+  await page.getByRole("button", { name: LABELS[locale].sheet }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  // Settled: checks run on the sheet as it rests, not halfway through its entrance.
+  await expect(page.locator("[data-entering]")).toHaveCount(0);
+}
+
+async function showToast(page: Page, locale: keyof typeof LABELS) {
+  await page.getByRole("button", { name: LABELS[locale].toast }).click();
+  const toast = page.getByRole("region").getByText(LABELS[locale].saved);
+  await expect(toast).toBeVisible();
+  await expect
+    .poll(() =>
+      page.getByRole("region").evaluate((region) => region.getAnimations({ subtree: true }).length),
+    )
+    .toBe(0);
 }
 
 for (const locale of ["en", "ar"] as const) {
   test.describe(`the gallery's overlays (${locale})`, () => {
     test("have no serious accessibility problems, open or showing", async ({ page }) => {
-      const thenToast = await openOverlays(page, locale);
+      await page.goto(`/${locale}/dev/ui/overlays`);
       const serious = async () =>
         (await new AxeBuilder({ page }).analyze()).violations
           .filter((v) => v.impact === "serious" || v.impact === "critical")
           .map((v) => `${v.id}: ${v.help}`);
+      await openSheet(page, locale);
       expect(await serious(), "with the sheet open").toEqual([]);
-      await thenToast();
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog")).toBeHidden();
+      await showToast(page, locale);
       expect(await serious(), "with a toast showing").toEqual([]);
     });
 
     test("move only with transform and opacity", async ({ page }) => {
-      const thenToast = await openOverlays(page, locale);
-      const moving = new Set(await animatedProperties(page));
-      await thenToast();
-      for (const property of await animatedProperties(page)) moving.add(property);
-      for (const property of moving) {
+      await page.goto(`/${locale}/dev/ui/overlays`);
+      const moved = await recordMotion(page);
+      await openSheet(page, locale);
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog")).toBeHidden();
+      await showToast(page, locale);
+      const properties = await moved();
+      // The sheet's slide (translate) and the toast's entrance were both seen.
+      expect(properties).toContain("translate");
+      for (const property of properties) {
         expect(["opacity", "transform", "translate", "scale", "rotate"]).toContain(property);
       }
     });
 
     test("don't slide or scale with reduced motion", async ({ page }) => {
       await page.emulateMedia({ reducedMotion: "reduce" });
-      const thenToast = await openOverlays(page, locale);
-      const moving = new Set(await animatedProperties(page));
-      await thenToast();
-      for (const property of await animatedProperties(page)) moving.add(property);
-      expect([...moving].filter((property) => property !== "opacity")).toEqual([]);
+      await page.goto(`/${locale}/dev/ui/overlays`);
+      const moved = await recordMotion(page);
+      await openSheet(page, locale);
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog")).toBeHidden();
+      await showToast(page, locale);
+      expect((await moved()).filter((property) => property !== "opacity")).toEqual([]);
     });
   });
 }
+
+test.describe("offline", () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "a network check");
+  });
+
+  test("a sheet whose code can't load leaves the page working, and opens once back online", async ({
+    page,
+    context,
+  }) => {
+    await page.goto("/en/dev/ui/overlays");
+    await context.setOffline(true);
+    await page.getByRole("button", { name: LABELS.en.sheet }).click();
+    await expect(page.getByRole("heading", { name: "Toasts and sheets", level: 1 })).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await context.setOffline(false);
+    await page.getByRole("button", { name: LABELS.en.sheet }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+  });
+
+  test("an error toast still shows with the network down", async ({ page, context }) => {
+    await page.goto("/en/dev/ui/overlays");
+    await context.setOffline(true);
+    await page.getByRole("button", { name: LABELS.en.error }).click();
+    await expect(page.getByRole("region").getByText(LABELS.en.failed)).toBeVisible();
+  });
+});

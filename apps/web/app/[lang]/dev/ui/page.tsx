@@ -1,9 +1,6 @@
 import { msg } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { connection } from "next/server";
-import type { ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -14,24 +11,22 @@ import { Panel } from "@/components/ui/Panel";
 import { ProgressLights } from "@/components/ui/ProgressLights";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Toasts } from "@/components/ui/Toast";
 import { initLingui } from "@/lib/i18n";
 import { alternates } from "@/lib/locales";
-import { SheetDemo } from "./SheetDemo";
-import { ToastDemo } from "./ToastDemo";
+import { Row, Section, showGalleryOrNotFound } from "./gallery";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { locale } = await initLingui();
   return { robots: { index: false }, alternates: alternates(locale, "/dev/ui") };
 }
 
-// Every component in every state it can hold still, in both languages: this replaces a separate
-// Storybook (spec 000). Hover, pressed and focus need a pointer or keyboard, and component tests
-// cover them. Shown only in development, tests and staging; an unset APP_ENV hides it.
+// Every component in every state it can hold still, in both languages. Toasts and sheets are on
+// ./overlays: a page holding every component is no route a student loads, and splitting keeps
+// each a fair test of the JavaScript budget. Hover, pressed and focus need a pointer or keyboard,
+// and component tests cover them.
 export default async function ComponentGallery() {
-  await connection();
-  if (!["development", "test", "staging"].includes(process.env.APP_ENV ?? "")) notFound();
-  const { i18n } = await initLingui();
+  await showGalleryOrNotFound();
+  const { i18n, locale } = await initLingui();
   const saving = i18n._(msg`Saving`);
   const close = i18n._(msg`Close`);
   const [question, questions] = [4, 10];
@@ -205,17 +200,26 @@ export default async function ComponentGallery() {
           </span>
         </Row>
         <ProgressLights
+          name={i18n._(msg`Session progress`)}
           label={i18n._(msg`Question ${question} of ${questions}`)}
+          completed={3}
+          total={10}
+        />
+        <ProgressLights
+          layout="inline"
+          name={i18n._(msg`Session progress`)}
+          label={i18n._(msg`Question ${question} of ${questions}`)}
+          shortLabel={i18n._(msg`${question} of ${questions}`)}
           completed={3}
           total={10}
         />
       </Section>
 
       <Section title={<Trans>Loading</Trans>}>
+        <p role="status" className="sr-only">
+          <Trans>Loading your course</Trans>
+        </p>
         <Panel aria-busy="true">
-          <span className="sr-only">
-            <Trans>Loading your course</Trans>
-          </span>
           <Skeleton className="h-5 w-2/3" />
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-5/6" />
@@ -242,50 +246,16 @@ export default async function ComponentGallery() {
         </Panel>
       </Section>
 
-      <Section title={<Trans>Toasts and sheets</Trans>}>
-        <ToastDemo
-          samples={[
-            {
-              label: i18n._(msg`Show a confirmation`),
-              toast: { title: i18n._(msg`Course saved.`), tone: "success" },
-            },
-            {
-              label: i18n._(msg`Show an error`),
-              toast: {
-                title: i18n._(msg`We couldn't save your course.`),
-                description: i18n._(msg`Check your connection, then try again.`),
-                tone: "error",
-              },
-            },
-          ]}
-        />
-        <SheetDemo
-          label={i18n._(msg`Change the exam date`)}
-          title={<Trans>Exam date</Trans>}
-          closeLabel={close}
+      <p className="text-note text-text-muted">
+        <a
+          href={`/${locale}/dev/ui/overlays`}
+          className="font-semibold text-glow underline-offset-4 outline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-focus"
         >
-          <p className="text-note text-text-muted">
-            <Trans>Your midterm is on 3 January. Your plan moves with it.</Trans>
-          </p>
-          <Input label={<Trans>Exam date</Trans>} defaultValue="2027-01-03" />
-        </SheetDemo>
-      </Section>
-      <Toasts closeLabel={close} />
+          <Trans>Toasts and sheets are on their own page.</Trans>
+        </a>
+      </p>
     </main>
   );
-}
-
-function Section({ title, children }: { title: ReactNode; children: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-title-3">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function Row({ children }: { children: ReactNode }) {
-  return <div className="flex flex-wrap items-center gap-3">{children}</div>;
 }
 
 function BookIcon() {

@@ -30,7 +30,7 @@ export function Light({
         "relative inline-block shrink-0 rounded-pill bg-dim",
         "before:absolute before:inset-0 before:rounded-[inherit] before:bg-amber before:opacity-0 before:shadow-light-progress",
         "after:absolute after:inset-0 after:rounded-[inherit] after:bg-glow after:opacity-0 after:shadow-light-mastered",
-        "before:transition-opacity before:duration-slow after:transition-opacity after:duration-slow motion-reduce:before:transition-none motion-reduce:after:transition-none",
+        "before:transition-opacity before:duration-base after:transition-opacity after:duration-base motion-reduce:before:transition-none motion-reduce:after:transition-none",
         SIZES[size],
         STATUS[status],
         className,
