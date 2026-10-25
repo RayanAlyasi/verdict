@@ -76,7 +76,7 @@ When this ships, a contributor can clone the repo, run one command and see the V
   - It pauses off screen and in hidden tabs, and shows a still frame with reduced motion.
   - The plain-language line and the legend stay in HTML for screen readers.
 - **Locales:** English and Arabic, with `/en` and `/ar` routes, `dir`, and hreflang alternates. All layout uses logical properties.
-- **`/dev/ui` route** (development and staging only): every component in every state, in both languages, with toasts and sheets, which need a press to show, on `/dev/ui/overlays`. This replaces a separate Storybook.
+- **`/dev/ui` route** (development, test and staging only): every component in every state, in both languages, with toasts and sheets, which need a press to show, on `/dev/ui/overlays`. This replaces a separate Storybook.
 
 ### Health and environments
 - **Health endpoints:** `GET /api/health` on the web reports web, api, database and storage status. The api has `GET /health`.

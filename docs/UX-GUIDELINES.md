@@ -43,7 +43,7 @@ Easing: `ease-standard` (`cubic-bezier(0.2, 0, 0, 1)`), the default for any tran
 - **Page transitions:** the View Transitions API: fade plus 8px slide in the navigation direction; shared elements (the globe, a course card) morph between screens where designed. Browsers without support change pages instantly.
 - **Lists:** stagger entrance by 30 ms, at most 8 items.
 - **Feedback moments:** a topic's light turning green, a correct answer glowing, readiness numbers counting up.
-- Animate only `transform` and `opacity`. Never animate layout properties, `box-shadow` or `filter`: draw a glow once and animate its opacity.
+- Animate only `transform` and `opacity`. The separate `translate`, `scale` and `rotate` properties, which Tailwind's classes use, are transforms too. Never animate layout properties, `box-shadow` or `filter`: draw a glow once and animate its opacity.
 - **Reduced motion:** with `prefers-reduced-motion`, ambient motion stops, transitions become instant fades, and the globe is shown static.
 
 ## The Globe direction (visual language)
