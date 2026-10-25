@@ -334,7 +334,11 @@ jobs:
           for _ in $(seq 1 60); do curl -fs http://127.0.0.1:8000/health && { ok=true; break; }; sleep 1; done
           [ "$ok" = true ] || { docker logs api; exit 1; }
           docker run --detach --name worker "${settings[@]}" verdict-api:ci python -m verdict.worker maintenance
-          for _ in $(seq 1 30); do docker logs worker 2>&1 | grep -q "Queue: maintenance" && exit 0; sleep 1; done
+          ok=false
+          for _ in $(seq 1 30); do docker logs worker 2>&1 | grep -q "Queue: maintenance" && { ok=true; break; }; sleep 1; done
+          # DBOS can log the queue before the worker has finished starting, so check it stayed up.
+          sleep 3
+          [ "$ok" = true ] && [ "$(docker inspect --format '{{.State.Running}}' worker)" = true ] && exit 0
           docker logs worker
           exit 1
 
