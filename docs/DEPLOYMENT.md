@@ -8,7 +8,7 @@ Three environments run the same images with different data and secrets. Changes 
 | Access | You | The team and testers, behind an access gate | Everyone |
 | Deploys | `pnpm dev` | Kamal, automatically on every merge to `main` | Kamal, when a GitHub Release is published and approved |
 | Database | Postgres 18 with pgvector in Docker | Postgres 18 with pgvector, continuous backups | Postgres 18 with pgvector, point-in-time recovery |
-| Files | Local `./storage` | Staging bucket | Production bucket |
+| Files | Local `./storage` | A server volume; a staging bucket from spec 001 | A server volume; a production bucket from spec 001 |
 | AI | Your own key or a local model | Shared key with low limits | Production key, per-user fair use and a platform spend cap |
 | Google sign-in | Development OAuth client | Staging OAuth client | Production OAuth client |
 | Data | Seeded demo course | Seeded demo course and test accounts | Real users; never copied to other environments |
