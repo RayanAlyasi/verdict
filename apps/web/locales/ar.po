@@ -8,5 +8,14 @@ msgstr ""
 "Language: ar\n"
 
 #: app/[lang]/layout.tsx
+#: app/[lang]/page.tsx
 msgid "An exam coach built from your own course materials."
-msgstr "مدرب للامتحانات مبني على مواد مقرراتك الدراسية."
+msgstr "مدرّب للامتحانات يعتمد على ملفات مقرراتك نفسها."
+
+#: app/[lang]/not-found.tsx
+msgid "Go to the home page"
+msgstr "اذهب إلى الصفحة الرئيسية"
+
+#: app/[lang]/not-found.tsx
+msgid "We couldn't find this page."
+msgstr "لم نجد هذه الصفحة."

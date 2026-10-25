@@ -51,6 +51,8 @@ test("the api's own 503 says which part is down", async () => {
 
 test.each([
   ["a proxy's error page", () => new Response("<html>Bad gateway</html>", { status: 502 })],
+  ["a proxy's 503 page", () => new Response("<html>Down for maintenance</html>", { status: 503 })],
+  ["a 503 that isn't the api's report", () => json({ detail: "Service unavailable" }, 503)],
   [
     "no answer",
     () => {

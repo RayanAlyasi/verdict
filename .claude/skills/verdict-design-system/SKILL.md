@@ -28,8 +28,8 @@ Tailwind's theme is generated from `tokens.json` (`apps/web/app/theme.css`; edit
 - **Motion:** `duration-press`, `duration-fast`, `duration-base`, `duration-slow`, `ease-standard`. A bare `transition-*` already uses `base` and `ease-standard`.
 - **Other names:** colours as in the token names (`bg-panel`, `text-text-muted`, `border-panel-border`), `rounded-md`, `text-caption`, `shadow-glow-primary`, `bg-nebula`, `min-h-touch-target`.
 - **Focus:** `outline-2 outline-offset-2 outline-focus`. Avoid `ring-offset-*`, which paints a white band on the dark background.
-- **Font:** `font-sans` is Readex Pro, self-hosted by `next/font` in `app/[lang]/layout.tsx`, with a size-matched fallback while it loads.
-- **Direction:** logical classes only (`ms-*`, `pe-*`, `start-*`, `text-start`, `rounded-s-*`), so Arabic mirrors. The e2e suite fails on `ml-*`, `left-*`, `text-right` and other physical sides.
+- **Font:** `font-sans` is Readex Pro, self-hosted by `next/font` in `app/[lang]/layout.tsx`. Its Latin and Arabic files are preloaded; other scripts' files load only for text that needs them. While it loads, the fallback is sized to Latin letters only, so Arabic text can reflow when it arrives.
+- **Direction:** logical classes only (`ms-*`, `pe-*`, `start-*`, `text-start`, `rounded-s-*`), so Arabic mirrors. The e2e suite fails when a rule sets one side differently from the other (`ml-*`, `left-*`, `rounded-l-*`, `text-right`). It can't judge transforms (`translate-x-*`), positions (`origin-left`, `bg-left`) or directional icons: give those an `rtl:` variant and check the Arabic screenshots.
 
 ## Signature elements
 - **Globe:** a Fibonacci sphere of points drawn on one `<canvas>`, with the glow from an image prepared once. Point colour shows mastery, and an optional orbit ring carries a satellite for the next session. Always paired with a plain-language line and the light legend in HTML.

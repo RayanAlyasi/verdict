@@ -59,3 +59,17 @@ def test_health_fails_when_storage_is_gone(client: TestClient, storage: Path) ->
         "database": "ok",
         "storage": "unavailable",
     }
+
+
+def test_a_deployed_api_never_creates_the_storage_folder(
+    api_engine: Engine, storage: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("APP_ENV", "staging")
+    monkeypatch.setenv("DEPLOYMENT_MODE", "self_hosted")
+    monkeypatch.setenv("DATABASE_URL", api_role_url(api_engine.url))
+    monkeypatch.setenv("STORAGE_LOCAL_PATH", str(storage))
+    with TestClient(app) as client:
+        response = client.get("/health")
+    assert not storage.exists()
+    assert response.status_code == 503
+    assert response.json()["storage"] == "unavailable"

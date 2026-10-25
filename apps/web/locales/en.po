@@ -8,5 +8,14 @@ msgstr ""
 "Language: en\n"
 
 #: app/[lang]/layout.tsx
+#: app/[lang]/page.tsx
 msgid "An exam coach built from your own course materials."
 msgstr "An exam coach built from your own course materials."
+
+#: app/[lang]/not-found.tsx
+msgid "Go to the home page"
+msgstr "Go to the home page"
+
+#: app/[lang]/not-found.tsx
+msgid "We couldn't find this page."
+msgstr "We couldn't find this page."

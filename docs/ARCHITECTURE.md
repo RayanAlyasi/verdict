@@ -129,7 +129,7 @@ Every AI call in Verdict goes through `ai_gateway`. Nothing else imports a provi
 - **Animation:** only `transform` and `opacity` animate. View Transitions drive page changes.
 - **Caching:**
   - Cloudflare caches hashed static files for a year.
-  - Readex Pro is trimmed to its Latin and Arabic characters.
+  - Readex Pro is self-hosted: its Latin and Arabic files are preloaded, and other scripts' files load only for text that needs them.
   - A single web instance caches on disk. Valkey becomes the shared Next.js cache only when several instances run.
 - **Budgets:** in `docs/UX-GUIDELINES.md`.
 

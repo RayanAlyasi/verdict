@@ -20,7 +20,17 @@ test.each(Object.keys(VALID))("%s missing, empty or blank is named", (name) => {
   }
 });
 
+test.each(["API_URL", "WEB_URL"])("%s must be an http or https address", (name) => {
+  for (const value of ["verdict.example", "localhost:3000", "ftp://verdict.example"]) {
+    expect(environmentProblems({ ...VALID, [name]: value })).toEqual([
+      expect.stringContaining(`${name} isn't an http or https address`),
+    ]);
+  }
+  expect(environmentProblems({ ...VALID, [name]: "https://verdict.example" })).toEqual([]);
+});
+
 test("a problem never shows a value", () => {
-  const problems = environmentProblems({ ...VALID, API_URL: "" });
+  const problems = environmentProblems({ ...VALID, API_URL: "", WEB_URL: `${SECRET}.example` });
+  expect(problems).toHaveLength(2);
   expect(problems.join("\n")).not.toContain(SECRET);
 });

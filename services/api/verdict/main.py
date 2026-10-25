@@ -23,10 +23,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Settings load here, not at import, so the OpenAPI export runs without any configuration.
     settings = load_settings()
     app.state.settings = settings
-    settings.storage_local_path.mkdir(parents=True, exist_ok=True)
-    # The timeout makes /health answer 503 instead of hanging when the host is unreachable.
+    # Deployed, the folder is a mounted volume: creating it there would hide a missing mount, and
+    # files written to it would vanish with the container.
+    if settings.app_env in ("development", "test"):
+        settings.storage_local_path.mkdir(parents=True, exist_ok=True)
+    # The timeout makes /health answer 503 instead of hanging when the host is unreachable. It stays
+    # under the web's 4-second wait for /health, so the web reports the database, not the api.
     app.state.engine = create_engine(
-        settings.database_url, pool_pre_ping=True, connect_args={"connect_timeout": 5}
+        settings.database_url, pool_pre_ping=True, connect_args={"connect_timeout": 3}
     )
     # In a thread: DBOS's synchronous calls refuse to run inside an event loop.
     await asyncio.to_thread(workflows.launch, settings, executor_id="api", queues=[])

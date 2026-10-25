@@ -28,7 +28,7 @@ for (const device of DEVICES) {
         test(`${route.name} (${locale})`, async ({ page }) => {
           const address = localized(locale, route.path);
           const response = await page.goto(address);
-          expect(response?.status(), `${address} answered`).toBeLessThan(400);
+          expect(response?.status(), `${address} answered`).toBe(route.status);
           await page.evaluate(() => document.fonts.ready);
           await page.screenshot({
             path: path.join(SCREENS, `${route.name}-${device.width}-${locale}.png`),

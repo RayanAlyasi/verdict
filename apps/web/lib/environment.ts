@@ -5,12 +5,22 @@ const REQUIRED = {
   WEB_URL: "this site's public address, for example http://localhost:3000",
   BETTER_AUTH_SECRET: "a random secret from openssl rand -base64 32",
 };
+const ADDRESSES = new Set(["API_URL", "WEB_URL"]);
+
+function isAddress(value: string): boolean {
+  return URL.canParse(value) && ["http:", "https:"].includes(new URL(value).protocol);
+}
 
 // Names each problem, never a value.
 export function environmentProblems(env: Record<string, string | undefined>): string[] {
-  return Object.entries(REQUIRED)
-    .filter(([name]) => !env[name]?.trim())
-    .map(([name, hint]) => `${name} is missing or empty: set it to ${hint}.`);
+  return Object.entries(REQUIRED).flatMap(([name, hint]) => {
+    const value = env[name]?.trim();
+    if (!value) return [`${name} is missing or empty: set it to ${hint}.`];
+    if (ADDRESSES.has(name) && !isAddress(value)) {
+      return [`${name} isn't an http or https address: set it to ${hint}.`];
+    }
+    return [];
+  });
 }
 
 export function checkEnvironment() {
