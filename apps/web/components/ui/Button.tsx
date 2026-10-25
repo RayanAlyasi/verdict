@@ -51,7 +51,7 @@ export function Button({
     <AriaButton
       {...props}
       className={[
-        "group relative inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-pill",
+        "group relative inline-flex min-w-11 select-none items-center justify-center gap-2 whitespace-nowrap rounded-pill",
         VARIANTS[variant],
         SIZES[size],
         // A ghost button's text lines up with the content beside it.

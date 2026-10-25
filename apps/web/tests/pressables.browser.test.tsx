@@ -172,16 +172,21 @@ describe.each([
   });
 });
 
-test("every button size leaves a 44px touch target", () => {
+test("every button leaves a 44px touch target, even with a one-letter label", () => {
   const container = render(
     <>
       <Button size="lg">Start</Button>
       <Button size="md">Start</Button>
       <Button size="sm">Start</Button>
+      <Button variant="ghost" size="sm">
+        A
+      </Button>
     </>,
   );
   for (const element of container.querySelectorAll("button")) {
-    expect(element.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    const { width, height } = element.getBoundingClientRect();
+    expect(height).toBeGreaterThanOrEqual(44);
+    expect(width).toBeGreaterThanOrEqual(44);
   }
 });
 
