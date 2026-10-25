@@ -50,7 +50,7 @@
   --background-image-space-background: radial-gradient(85% 55% at 50% 22%, #132644 0%, #0A1222 60%, #060B15 100%);
   --spacing: 4px;
   --spacing-touch-target: 44px;
-  --font-sans: "Readex Pro", "Noto Sans Arabic", system-ui, sans-serif;
+  --font-sans: var(--font-readex-pro), "Noto Sans Arabic", system-ui, sans-serif;
   --text-*: initial;
   --text-display: 40px;
   --text-display--line-height: 44px;

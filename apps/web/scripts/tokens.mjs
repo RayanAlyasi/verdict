@@ -35,7 +35,13 @@ export function themeCss(tokens) {
   add("spacing", `${base}px`);
   add("spacing-touch-target", tokens["touch-target-min"]);
 
-  add("font-sans", tokens.type.family);
+  // next/font self-hosts Readex Pro and puts it in --font-readex-pro (app/[lang]/layout.tsx), with
+  // Arial resized to its Latin letters as the fallback. Latin text barely moves when the font
+  // arrives where Arial exists; Arabic text, and Android, which has no Arial, can still reflow.
+  const family = tokens.type.family.replace(/^"Readex Pro"/, "var(--font-readex-pro)");
+  if (family === tokens.type.family)
+    throw new Error('type.family no longer starts with "Readex Pro"');
+  add("font-sans", family);
   lines.push("  --text-*: initial;");
   for (const [name, style] of Object.entries(tokens.type.styles)) {
     add(`text-${name}`, style.size);

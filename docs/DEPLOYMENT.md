@@ -8,7 +8,7 @@ Three environments run the same images with different data and secrets. Changes 
 | Access | You | The team and testers, behind an access gate | Everyone |
 | Deploys | `pnpm dev` | Kamal, automatically on every merge to `main` | Kamal, when a GitHub Release is published and approved |
 | Database | Postgres 18 with pgvector in Docker | Postgres 18 with pgvector, continuous backups | Postgres 18 with pgvector, point-in-time recovery |
-| Files | Local `./storage` | Staging bucket | Production bucket |
+| Files | Local `./storage` | A server volume at `STORAGE_LOCAL_PATH` (a staging bucket is planned for spec 001) | A server volume at `STORAGE_LOCAL_PATH` (a production bucket is planned for spec 001) |
 | AI | Your own key or a local model | Shared key with low limits | Production key, per-user fair use and a platform spend cap |
 | Google sign-in | Development OAuth client | Staging OAuth client | Production OAuth client |
 | Data | Seeded demo course | Seeded demo course and test accounts | Real users; never copied to other environments |
@@ -57,7 +57,7 @@ Never put secrets in code, logs, issues or screenshots. `deploy.yml` passes the 
 | `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | secret | staging, production | Sign-in |
 | `DATABASE_URL`, `AUTH_DATABASE_URL` | secret | staging, production | Database roles for the API and for the web app's `auth` schema |
 | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` | secret | staging, production, evals, evals-pr | AI providers. The eval environments get their own keys, with a low spend limit set at the provider |
-| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | secret | staging, production | File storage |
+| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | secret | staging, production | File storage in a bucket, from spec 001; unused until then |
 | `SENTRY_DSN` | secret | staging, production | Error reporting |
 | `EVALS_REPO` (variable), `EVALS_REPO_TOKEN` (secret) | both | evals, evals-pr | The private evaluation set, with a read-only token |
 | `EVALS_SPEND_LIMIT_USD` | variable | evals, evals-pr | Cost cap for one eval run |

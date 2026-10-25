@@ -38,7 +38,7 @@ test("every token becomes a theme variable", () => {
     `--ease-standard: ${tokens.motion.easing};`,
     `--transition-duration-fast: ${tokens.motion.fast};`,
     `--default-transition-duration: ${tokens.motion.base};`,
-    `--font-sans: ${tokens.type.family};`,
+    `--font-sans: ${tokens.type.family.replace('"Readex Pro"', "var(--font-readex-pro)")};`,
     `--text-body: ${tokens.type.styles.body.size};`,
     `--text-body--line-height: ${tokens.type.styles.body.lineHeight};`,
   ];

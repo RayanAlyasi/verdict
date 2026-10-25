@@ -101,3 +101,13 @@ def test_self_hosted_mode_needs_no_platform_key(
     environment.setenv("DEPLOYMENT_MODE", "self_hosted")
     environment.delenv("ANTHROPIC_API_KEY")
     assert load_settings().anthropic_api_key is None
+
+
+def test_storage_is_local_until_uploads_arrive(
+    environment: pytest.MonkeyPatch,
+) -> None:
+    for name, value in VALID.items():
+        environment.setenv(name, value)
+    environment.setenv("STORAGE_DRIVER", "s3")
+    with pytest.raises(SettingsError, match="STORAGE_DRIVER is invalid"):
+        load_settings()

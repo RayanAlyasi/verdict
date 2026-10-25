@@ -43,6 +43,8 @@ You sign once; the `cla` check then passes on all your pull requests.
 2. **Keep it small:** one feature or fix, ideally under 400 changed lines.
 3. **Add or update tests.** A bug fix starts with a failing test.
 4. **UI changes** include screenshots at phone (390px) and desktop (1440px) width, in English and Arabic.
+   - Text a student reads goes through Lingui, never a bare string: `<Trans>` from `@lingui/react/macro` in markup, or `` i18n._(msg`…`) `` with the `i18n` that `initLingui()` returns. Each page and layout calls `initLingui()` first. Lingui's global `` t`…` `` isn't set up, so it throws.
+   - `pnpm --dir apps/web messages` adds new text to `apps/web/locales/`; then write its Arabic in `ar.po`. Lint and the build fail while a translation is missing.
 5. **Run the checks** for what you changed:
    ```bash
    pnpm lint && pnpm typecheck && pnpm test     # web (first run: pnpm --dir apps/web exec playwright install chromium)

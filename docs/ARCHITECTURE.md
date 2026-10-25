@@ -129,7 +129,7 @@ Every AI call in Verdict goes through `ai_gateway`. Nothing else imports a provi
 - **Animation:** only `transform` and `opacity` animate. View Transitions drive page changes.
 - **Caching:**
   - Cloudflare caches hashed static files for a year.
-  - Readex Pro is trimmed to its Latin and Arabic characters.
+  - Readex Pro is self-hosted: its Latin and Arabic files are preloaded, and other scripts' files load only for text that needs them.
   - A single web instance caches on disk. Valkey becomes the shared Next.js cache only when several instances run.
 - **Budgets:** in `docs/UX-GUIDELINES.md`.
 
@@ -151,7 +151,7 @@ Split only with evidence: a module needs independent scaling (the `media` worker
 ## Technology
 See [ADR 0010](adr/0010-stack-revised.md) and [ADR 0011](adr/0011-hosting-kamal.md). Repository layout after spec 000:
 ```
-apps/web/           Next.js app (app/, components/, lib/, tests/, e2e/; scripts/ generates the theme and the API client)
+apps/web/           Next.js app (app/[lang]/, components/, lib/, locales/, tests/, e2e/; scripts/ generates the theme and the API client)
 services/api/       FastAPI app: verdict/<module>/, migrations/, tests/, evals/
 config/             Kamal deploy configuration; db/ creates the database roles
 docs/ specs/ scripts/ .claude/ .github/

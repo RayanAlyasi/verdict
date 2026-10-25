@@ -1,6 +1,6 @@
 import path from "node:path";
 import { expect, test } from "@playwright/test";
-import { ROUTES } from "./routes";
+import { LOCALES, localized, ROUTES } from "./routes";
 
 // For the ui-reviewer agent, which looks for artifacts/screens/<screen>-<390|1440>-<en|ar>.png.
 const SCREENS = path.resolve(import.meta.dirname, "../../../artifacts/screens");
@@ -24,16 +24,19 @@ for (const device of DEVICES) {
     test.use(device.use);
 
     for (const route of ROUTES) {
-      test(route.name, async ({ page }) => {
-        const response = await page.goto(route.path);
-        expect(response?.status(), `${route.path} answered`).toBeLessThan(400);
-        await page.evaluate(() => document.fonts.ready);
-        await page.screenshot({
-          path: path.join(SCREENS, `${route.name}-${device.width}-en.png`),
-          fullPage: true,
-          animations: "disabled",
+      for (const locale of LOCALES) {
+        test(`${route.name} (${locale})`, async ({ page }) => {
+          const address = localized(locale, route.path);
+          const response = await page.goto(address);
+          expect(response?.status(), `${address} answered`).toBe(route.status);
+          await page.evaluate(() => document.fonts.ready);
+          await page.screenshot({
+            path: path.join(SCREENS, `${route.name}-${device.width}-${locale}.png`),
+            fullPage: true,
+            animations: "disabled",
+          });
         });
-      });
+      }
     }
   });
 }

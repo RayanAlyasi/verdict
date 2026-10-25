@@ -58,7 +58,7 @@ When this ships, a contributor can clone the repo, run one command and see the V
 - **Generated API client:** `contract:check` exports OpenAPI from FastAPI and generates the Orval fetch client into `apps/web/lib/api/`. It fails if the committed client differs.
 
 ### App shell and design system (web)
-- **Fonts:** Readex Pro via `next/font`, trimmed to its Latin and Arabic characters.
+- **Fonts:** Readex Pro via `next/font`, preloading only its Latin and Arabic files (other scripts' files load only for text that needs them, such as a student's name in Latin Extended).
 - **Space background:**
   - The nebula is rendered at a quarter of its size and scaled up.
   - Two star layers and a shooting star animate only `opacity` and `transform`.
