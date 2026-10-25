@@ -76,7 +76,7 @@ When this ships, a contributor can clone the repo, run one command and see the V
   - It pauses off screen and in hidden tabs, and shows a still frame with reduced motion.
   - The plain-language line and the legend stay in HTML for screen readers.
 - **Locales:** English and Arabic, with `/en` and `/ar` routes, `dir`, and hreflang alternates. All layout uses logical properties.
-- **`/dev/ui` route** (development and staging only): every component in every state, in both languages. This replaces a separate Storybook.
+- **`/dev/ui` route** (development, test and staging only): every component in every state, in both languages, with toasts and sheets, which need a press to show, on `/dev/ui/overlays`. This replaces a separate Storybook.
 
 ### Health and environments
 - **Health endpoints:** `GET /api/health` on the web reports web, api, database and storage status. The api has `GET /health`.
@@ -109,7 +109,7 @@ When this ships, a contributor can clone the repo, run one command and see the V
 - [ ] Fresh clone: `cp .env.example .env`, fill the secrets marked required (`openssl rand -base64 32`), then `docker compose up -d && pnpm install && uv sync --project services/api && pnpm dev` shows the shell at localhost:3000 with the globe.
 - [ ] `pnpm lint typecheck test build` and the api checks pass locally and in CI; `contract:check` passes; every Python dependency installs on 3.14.
 - [ ] `pnpm e2e:screens` writes `artifacts/screens/<screen>-<390|1440>-<en|ar>.png` for every route (the `ui-reviewer` depends on these names).
-- [ ] `/dev/ui` shows every component's states. Component tests in real Chromium cover hover (pointer only), pressed, focus-visible, disabled and loading. Axe reports no serious or critical issues.
+- [ ] `/dev/ui` and `/dev/ui/overlays` show every component's states. Component tests in real Chromium cover hover (pointer only), pressed, focus-visible, disabled and loading. Axe reports no serious or critical issues.
 - [ ] At 360px and 1440px the shell matches the approved designs (bottom nav vs sidebar); Arabic mirrors correctly.
 - [ ] With reduced motion on, the background and globe are static and transitions are instant.
 - [ ] A performance trace of the shell at 4× CPU throttling shows no long frames caused by the globe or background, and no animated property other than `transform` and `opacity`.
@@ -118,7 +118,7 @@ When this ships, a contributor can clone the repo, run one command and see the V
 - [ ] `gh attestation verify` succeeds for a staging image, and the promotion fails for a commit that never reached staging.
 - [ ] `ci-ok`, `pr-title` and `cla` are the only required checks. A docs-only pull request skips web, api, contract and e2e and still passes. zizmor reports no findings.
 - [ ] `scripts/github/setup-repo.sh` completes with no failed steps, and a second run changes nothing.
-- [ ] A route over 170 KB of compressed JavaScript fails the e2e suite, and a migration that can't downgrade fails the api tests (each proved once).
+- [ ] A route over 200 KB of compressed JavaScript fails the e2e suite, and a migration that can't downgrade fails the api tests (each proved once).
 - [ ] The staging database restores to a chosen minute from its WAL-G backups. Proved once by hand, then by the monthly check.
 - [ ] The boundary test fails when one module imports another module's internals (proved by a test PR).
 - [ ] Calling the gateway with the fake provider records a usage ledger row, and refuses a call that would pass the student's daily token limit or the platform's daily spend cap.

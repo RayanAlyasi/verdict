@@ -1,31 +1,34 @@
 import { msg } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { connection } from "next/server";
-import type { ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
+import { Light } from "@/components/ui/Light";
+import { Panel } from "@/components/ui/Panel";
+import { ProgressLights } from "@/components/ui/ProgressLights";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { initLingui } from "@/lib/i18n";
 import { alternates } from "@/lib/locales";
+import { Row, Section, showGalleryOrNotFound } from "./gallery";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { locale } = await initLingui();
   return { robots: { index: false }, alternates: alternates(locale, "/dev/ui") };
 }
 
-// Every component in every state it can hold still, in both languages: this replaces a separate
-// Storybook (spec 000). Hover, pressed and focus need a pointer or keyboard, and component tests
-// cover them.
+// Every component in every state it can hold still, in both languages. Toasts and sheets, which
+// need a press to show, are on ./overlays. Hover, pressed and focus need a pointer or keyboard,
+// and component tests cover them.
 export default async function ComponentGallery() {
-  await connection();
-  if (!["development", "test", "staging"].includes(process.env.APP_ENV ?? "")) notFound();
-  const { i18n } = await initLingui();
+  await showGalleryOrNotFound();
+  const { i18n, locale } = await initLingui();
   const saving = i18n._(msg`Saving`);
   const close = i18n._(msg`Close`);
+  const [question, questions] = [4, 10];
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-8 p-6">
@@ -149,21 +152,122 @@ export default async function ComponentGallery() {
         />
         <Input label={<Trans>Instructor</Trans>} defaultValue="Dr. Haddad" isDisabled />
       </Section>
+
+      <Section title={<Trans>Panels</Trans>}>
+        <Panel>
+          <p className="text-small font-semibold">
+            <Trans>Next: enzyme kinetics</Trans>
+          </p>
+          <p className="text-note text-text-muted">
+            <Trans>Today&apos;s session, about 25 minutes.</Trans>
+          </p>
+        </Panel>
+        <Panel tone="glow">
+          <p className="text-small">
+            <Trans>9 of 12 midterm topics mastered.</Trans>
+          </p>
+        </Panel>
+        <Panel tone="amber">
+          <p className="text-small">
+            <Trans>Common trap: converting the units after the formula.</Trans>
+          </p>
+        </Panel>
+        <Panel tone="coral">
+          <p className="text-small">
+            <Trans>We couldn&apos;t read page 4 of this file. Try a clearer photo.</Trans>
+          </p>
+        </Panel>
+      </Section>
+
+      <Section title={<Trans>Lights</Trans>}>
+        <Row>
+          <span className="flex items-center gap-2 text-note">
+            <Light status="mastered" />
+            <Trans>Mastered</Trans>
+          </span>
+          <span className="flex items-center gap-2 text-note">
+            <Light status="progress" />
+            <Trans>In progress</Trans>
+          </span>
+          <span className="flex items-center gap-2 text-note">
+            <Light status="not-started" />
+            <Trans>Not started</Trans>
+          </span>
+          <span className="flex items-center gap-2 text-note">
+            <Light status="current" />
+            <Trans>Current question</Trans>
+          </span>
+        </Row>
+        <ProgressLights
+          name={i18n._(msg`Session progress`)}
+          label={i18n._(msg`Question ${question} of ${questions}`)}
+          completed={3}
+          total={10}
+        />
+        <ProgressLights
+          layout="inline"
+          name={i18n._(msg`Session progress`)}
+          label={i18n._(msg`Question ${question} of ${questions}`)}
+          shortLabel={i18n._(msg`${question} of ${questions}`)}
+          completed={3}
+          total={10}
+        />
+      </Section>
+
+      <Section title={<Trans>Loading</Trans>}>
+        <p role="status" className="sr-only">
+          <Trans>Loading your course</Trans>
+        </p>
+        <Panel aria-busy="true">
+          <Skeleton className="h-5 w-2/3" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
+        </Panel>
+      </Section>
+
+      <Section title={<Trans>Empty state</Trans>}>
+        <Panel>
+          <EmptyState
+            headingLevel={3}
+            icon={<BookIcon />}
+            title={<Trans>No courses yet</Trans>}
+            description={
+              <Trans>
+                Add a course and its files, and Verdict builds your study plan from them.
+              </Trans>
+            }
+            action={
+              <Button>
+                <Trans>Add your first course</Trans>
+              </Button>
+            }
+          />
+        </Panel>
+      </Section>
+
+      <p className="text-note text-text-muted">
+        <a
+          href={`/${locale}/dev/ui/overlays`}
+          className="font-semibold text-glow underline-offset-4 outline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+        >
+          <Trans>Toasts and sheets are on their own page.</Trans>
+        </a>
+      </p>
     </main>
   );
 }
 
-function Section({ title, children }: { title: ReactNode; children: ReactNode }) {
+function BookIcon() {
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-title-3">{title}</h2>
-      {children}
-    </section>
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-7" fill="none">
+      <path
+        d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
-}
-
-function Row({ children }: { children: ReactNode }) {
-  return <div className="flex flex-wrap items-center gap-3">{children}</div>;
 }
 
 function CloseIcon() {

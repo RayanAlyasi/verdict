@@ -105,7 +105,9 @@ test("the component gallery is hidden in production and when APP_ENV is unset", 
     delete env.APP_ENV;
     if (appEnv) env.APP_ENV = appEnv;
     await withWeb(port, env, async (base) => {
-      expect((await fetch(`${base}/en/dev/ui`)).status, `APP_ENV=${appEnv}`).toBe(status);
+      for (const path of ["/en/dev/ui", "/en/dev/ui/overlays"]) {
+        expect((await fetch(`${base}${path}`)).status, `${path}, APP_ENV=${appEnv}`).toBe(status);
+      }
     });
   }
 });

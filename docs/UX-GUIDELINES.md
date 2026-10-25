@@ -43,7 +43,7 @@ Easing: `ease-standard` (`cubic-bezier(0.2, 0, 0, 1)`), the default for any tran
 - **Page transitions:** the View Transitions API: fade plus 8px slide in the navigation direction; shared elements (the globe, a course card) morph between screens where designed. Browsers without support change pages instantly.
 - **Lists:** stagger entrance by 30 ms, at most 8 items.
 - **Feedback moments:** a topic's light turning green, a correct answer glowing, readiness numbers counting up.
-- Animate only `transform` and `opacity`. Never animate layout properties, `box-shadow` or `filter`: draw a glow once and animate its opacity.
+- Animate only `transform` and `opacity`. The separate `translate`, `scale` and `rotate` properties, which Tailwind's classes use, are transforms too. Never animate layout properties, `box-shadow` or `filter`: draw a glow once and animate its opacity.
 - **Reduced motion:** with `prefers-reduced-motion`, ambient motion stops, transitions become instant fades, and the globe is shown static.
 
 ## The Globe direction (visual language)
@@ -53,7 +53,7 @@ Dark space background with a slowly drifting nebula, twinkling stars and the occ
 - The globe is drawn on one `<canvas>`, not as hundreds of page elements; the plain-language line and legend stay in HTML.
 
 ## Performance budgets (mid-range phone, 4G)
-Largest Contentful Paint under 2.5 s · Interaction to Next Paint under 200 ms · Cumulative Layout Shift under 0.1 · JavaScript per route under 170 KB compressed · 60 fps during animations.
+Largest Contentful Paint under 2.5 s · Interaction to Next Paint under 200 ms · Cumulative Layout Shift under 0.1 · JavaScript per route under 200 KB compressed (React and Next.js alone take about 118 KB) · 60 fps during animations.
 
 ## Accessibility
 WCAG 2.2 AA: contrast 4.5:1 for text, 3:1 for controls; full keyboard use; visible focus; screen-reader labels for icons and charts; touch targets at least 44 x 44px; colour is never the only signal (readiness uses colour, shape and words).

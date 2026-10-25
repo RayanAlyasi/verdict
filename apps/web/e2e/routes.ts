@@ -7,6 +7,7 @@ export const ROUTES = [
   { name: "home", path: "/", status: 200 },
   { name: "not-found", path: "/no-such-page", status: 404 },
   { name: "dev-ui", path: "/dev/ui", status: 200 },
+  { name: "dev-ui-overlays", path: "/dev/ui/overlays", status: 200 },
 ] as const;
 
 export { LOCALES };

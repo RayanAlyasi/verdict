@@ -7,6 +7,22 @@ msgstr ""
 "X-Generator: @lingui/cli\n"
 "Language: ar\n"
 
+#: app/[lang]/dev/ui/page.tsx
+msgid "{question} of {questions}"
+msgstr "{question} من {questions}"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "9 of 12 midterm topics mastered."
+msgstr "أتقنت 9 من 12 موضوعًا من مواضيع الامتحان النصفي."
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Add a course and its files, and Verdict builds your study plan from them."
+msgstr "أضف مقررًا وملفاته، وسيبني Verdict خطة دراستك منها."
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Add your first course"
+msgstr "أضف مقررك الأول"
+
 #: app/[lang]/layout.tsx
 #: app/[lang]/page.tsx
 msgid "An exam coach built from your own course materials."
@@ -20,13 +36,26 @@ msgstr "كما يظهر في جدولك الدراسي."
 msgid "Buttons"
 msgstr "الأزرار"
 
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "Change the exam date"
+msgstr "غيّر تاريخ الامتحان"
+
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "Check your connection, then try again."
+msgstr "تحقّق من اتصالك، ثم حاول مرة أخرى."
+
 #: app/[lang]/dev/ui/page.tsx
 msgid "Chips"
 msgstr "أزرار الاختيار"
 
+#: app/[lang]/dev/ui/overlays/page.tsx
 #: app/[lang]/dev/ui/page.tsx
 msgid "Close"
 msgstr "إغلاق"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Common trap: converting the units after the formula."
+msgstr "خطأ شائع: تحويل الوحدات بعد تطبيق المعادلة."
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Components"
@@ -44,6 +73,19 @@ msgstr "رمز المقرر"
 msgid "Course name"
 msgstr "اسم المقرر"
 
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "Course saved."
+msgstr "حفظنا مقررك."
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Current question"
+msgstr "السؤال الحالي"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Empty state"
+msgstr "حالة فارغة"
+
+#: app/[lang]/dev/ui/overlays/page.tsx
 #: app/[lang]/dev/ui/page.tsx
 msgid "Exam date"
 msgstr "تاريخ الامتحان"
@@ -69,16 +111,52 @@ msgid "In depth"
 msgstr "بالتفصيل"
 
 #: app/[lang]/dev/ui/page.tsx
+msgid "In progress"
+msgstr "قيد التقدّم"
+
+#: app/[lang]/dev/ui/page.tsx
 msgid "Instructor"
 msgstr "المحاضر"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Lights"
+msgstr "الأضواء"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Loading"
+msgstr "التحميل"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Loading your course"
+msgstr "جارٍ تحميل مقررك"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Mastered"
+msgstr "متقَن"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Mixed"
 msgstr "منوّع"
 
 #: app/[lang]/dev/ui/page.tsx
+msgid "Next: enzyme kinetics"
+msgstr "التالي: حركية الإنزيمات"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "No courses yet"
+msgstr "لا توجد مقررات بعد"
+
+#: app/[lang]/dev/ui/page.tsx
 msgid "Not now"
 msgstr "ليس الآن"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Not started"
+msgstr "لم يبدأ"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Panels"
+msgstr "اللوحات"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Past paper"
@@ -93,12 +171,20 @@ msgid "Prediction exam"
 msgstr "امتحان متوقّع"
 
 #: app/[lang]/dev/ui/page.tsx
+msgid "Question {question} of {questions}"
+msgstr "السؤال {question} من {questions}"
+
+#: app/[lang]/dev/ui/page.tsx
 msgid "Revision"
 msgstr "مراجعة"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Save"
 msgstr "حفظ"
+
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "Save the date"
+msgstr "احفظ التاريخ"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Saving"
@@ -107,6 +193,22 @@ msgstr "جارٍ الحفظ"
 #: app/[lang]/dev/ui/page.tsx
 msgid "Segmented control"
 msgstr "مبدّل الخيارات"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Session progress"
+msgstr "تقدّم الجلسة"
+
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "Show a confirmation"
+msgstr "اعرض تأكيدًا"
+
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "Show a note"
+msgstr "اعرض ملاحظة"
+
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "Show an error"
+msgstr "اعرض خطأً"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Simply"
@@ -124,10 +226,46 @@ msgstr "ابدأ جلسة اليوم"
 msgid "Text fields"
 msgstr "حقول النص"
 
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "Toasts and sheets"
+msgstr "الإشعارات والنوافذ"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Toasts and sheets are on their own page."
+msgstr "الإشعارات والنوافذ في صفحة خاصة بها."
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Today's session, about 25 minutes."
+msgstr "جلسة اليوم، نحو 25 دقيقة."
+
 #: app/[lang]/dev/ui/page.tsx
 msgid "Topic drill"
 msgstr "تدريب على موضوع"
 
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "Try them"
+msgstr "جرّبها"
+
 #: app/[lang]/not-found.tsx
 msgid "We couldn't find this page."
 msgstr "لم نجد هذه الصفحة."
+
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "We couldn't open this. Check your connection, then try again."
+msgstr "لم نتمكن من فتح هذا. تحقّق من اتصالك، ثم حاول مرة أخرى."
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "We couldn't read page 4 of this file. Try a clearer photo."
+msgstr "لم نتمكن من قراءة الصفحة 4 من هذا الملف. جرّب صورة أوضح."
+
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "We couldn't save your course."
+msgstr "لم نتمكن من حفظ مقررك."
+
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "Your midterm is on 3 January. Your plan moves with it."
+msgstr "امتحانك النصفي في 3 يناير، وخطتك تتغيّر معه."
+
+#: app/[lang]/dev/ui/overlays/page.tsx
+msgid "Your plan now starts on Monday."
+msgstr "خطتك تبدأ الآن يوم الاثنين."
