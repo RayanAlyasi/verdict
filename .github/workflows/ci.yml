@@ -53,7 +53,7 @@ jobs:
           ai=false; [ "$api_exists" = true ] && [ -d services/api/evals ] && [ "$(touches '^services/api/(verdict/(ai_gateway|generation|verification|ingestion|course_map)/|evals/)')" = true ] && ai=true
           scripts=$(touches "(^scripts/|\.sh$|\.md$|^\.github/workflows/)")
           # What a broken image would otherwise first show as a failed staging deploy.
-          images=false; [ -e apps/web/Dockerfile ] && [ -e services/api/Dockerfile ] && [ "$(touches "(Dockerfile$|^\.dockerignore$|^package\.json$|^apps/web/(package\.json|next\.config\.ts)$|^pnpm-(lock|workspace)\.yaml$|^services/api/(pyproject\.toml|uv\.lock|\.python-version)$|^config/deploy|^\.github/workflows/(ci|deploy)\.yml$)")" = true ] && images=true
+          images=false; [ "$(touches "(Dockerfile$|^\.dockerignore$|^package\.json$|^apps/web/(package\.json|next\.config\.ts)$|^pnpm-(lock|workspace)\.yaml$|^services/api/(pyproject\.toml|uv\.lock|\.python-version)$|^config/deploy|^\.github/workflows/(ci|deploy)\.yml$)")" = true ] && images=true
 
           { echo "web=$web"; echo "api=$api"; echo "full=$full"; echo "ai=$ai"; echo "scripts=$scripts"; echo "deployable=$deployable"; echo "images=$images"; } | tee -a "$GITHUB_OUTPUT"
 
