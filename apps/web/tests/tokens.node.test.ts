@@ -57,6 +57,9 @@ test("brand classes exist and Tailwind's stock ones don't", async () => {
     "ease-standard",
     "min-h-touch-target",
     "p-6",
+    "border-control-border",
+    "rounded-control",
+    "text-label",
   ];
   const stock = ["bg-red-500", "text-sm", "rounded-2xl", "shadow-md", "ease-in"];
   const built = await classesFor([...brand, ...stock]);
@@ -66,6 +69,17 @@ test("brand classes exist and Tailwind's stock ones don't", async () => {
   expect(Number.parseInt(tokens.spacing["space-5"], 10)).toBe(
     6 * Number.parseInt(tokens.spacing["space-1"], 10),
   );
+});
+
+test("Arabic pages get the taller line heights, and only those styles change", () => {
+  const styles: Record<string, { lineHeightArabic?: string }> = tokens.type.styles;
+  const overrides = Object.entries(styles).filter(([, style]) => style.lineHeightArabic);
+  expect(overrides.map(([name]) => name)).toContain("title-1");
+  const block = css.slice(css.indexOf(":lang(ar) {"));
+  for (const [name, style] of overrides) {
+    expect(block).toContain(`--text-${name}--line-height: ${style.lineHeightArabic};`);
+  }
+  expect(block.match(/--text-/g)).toHaveLength(overrides.length);
 });
 
 test("the committed theme matches the tokens", () => {

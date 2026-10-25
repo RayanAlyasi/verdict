@@ -68,3 +68,44 @@ for (const [label, value, port] of [
     expect(output).toContain("BETTER_AUTH_SECRET is missing or empty");
   });
 }
+
+// Serves the build on a port of its own for `check`, then stops it, whole process group included.
+async function withWeb(
+  port: number,
+  env: NodeJS.ProcessEnv,
+  check: (base: string) => Promise<void>,
+) {
+  const server = spawn("pnpm", ["exec", "next", "start", "--port", String(port)], {
+    env,
+    detached: true,
+  });
+  const base = `http://127.0.0.1:${port}`;
+  try {
+    await expect
+      .poll(async () => (await fetch(`${base}/en`).catch(() => null))?.status, { timeout: 20_000 })
+      .toBe(200);
+    await check(base);
+  } finally {
+    process.kill(-server.pid!, "SIGTERM");
+  }
+}
+
+test("the component gallery is hidden in production and when APP_ENV is unset", async () => {
+  test.setTimeout(90_000);
+  for (const [appEnv, status, port] of [
+    ["production", 404, 3103],
+    [undefined, 404, 3104],
+    ["staging", 200, 3105],
+  ] as const) {
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      API_URL: "http://127.0.0.1:8100",
+      WEB_URL: `http://127.0.0.1:${port}`,
+    };
+    delete env.APP_ENV;
+    if (appEnv) env.APP_ENV = appEnv;
+    await withWeb(port, env, async (base) => {
+      expect((await fetch(`${base}/en/dev/ui`)).status, `APP_ENV=${appEnv}`).toBe(status);
+    });
+  }
+});

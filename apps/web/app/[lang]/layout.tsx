@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Readex_Pro } from "next/font/google";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
+import { LocaleProvider } from "@/components/ui/LocaleProvider";
 import { initLingui } from "@/lib/i18n";
 import { direction } from "@/lib/locales";
 import "../globals.css";
@@ -34,7 +35,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const { locale } = await initLingui();
   return (
     <html lang={locale} dir={direction(locale)} className={readexPro.variable}>
-      <body className="bg-space-900 font-sans text-body text-text antialiased">{children}</body>
+      <body className="bg-space-900 font-sans text-body text-text antialiased">
+        <LocaleProvider locale={locale}>{children}</LocaleProvider>
+      </body>
     </html>
   );
 }

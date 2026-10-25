@@ -12,9 +12,121 @@ msgstr ""
 msgid "An exam coach built from your own course materials."
 msgstr "An exam coach built from your own course materials."
 
+#: app/[lang]/dev/ui/page.tsx
+msgid "As it appears on your timetable."
+msgstr "As it appears on your timetable."
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Buttons"
+msgstr "Buttons"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Chips"
+msgstr "Chips"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Close"
+msgstr "Close"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Components"
+msgstr "Components"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Continue"
+msgstr "Continue"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Course code"
+msgstr "Course code"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Course name"
+msgstr "Course name"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Exam date"
+msgstr "Exam date"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Explain it"
+msgstr "Explain it"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "For example, Biochemistry 201"
+msgstr "For example, Biochemistry 201"
+
 #: app/[lang]/not-found.tsx
 msgid "Go to the home page"
 msgstr "Go to the home page"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Icon buttons"
+msgstr "Icon buttons"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "In depth"
+msgstr "In depth"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Instructor"
+msgstr "Instructor"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Mixed"
+msgstr "Mixed"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Not now"
+msgstr "Not now"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Past paper"
+msgstr "Past paper"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Pick a date after today."
+msgstr "Pick a date after today."
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Prediction exam"
+msgstr "Prediction exam"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Revision"
+msgstr "Revision"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Save"
+msgstr "Save"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Saving"
+msgstr "Saving"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Segmented control"
+msgstr "Segmented control"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Simply"
+msgstr "Simply"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Skip this question"
+msgstr "Skip this question"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Start today's session"
+msgstr "Start today's session"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Text fields"
+msgstr "Text fields"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Topic drill"
+msgstr "Topic drill"
 
 #: app/[lang]/not-found.tsx
 msgid "We couldn't find this page."

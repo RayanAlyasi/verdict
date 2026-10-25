@@ -22,10 +22,10 @@ Ease of use is Verdict's main differentiator. A first-year student in any major,
 ## Interaction states (required on every interactive element)
 | State | Treatment |
 | --- | --- |
-| Hover | Pointer devices only (`@media (hover: hover)`): subtle lift or glow, border brightens, 120 ms |
+| Hover | Pointer devices only (React Aria's `data-hovered`, which a finger never sets): subtle lift or glow, border brightens, 120 ms |
 | Pressed | Scale to 0.97 with 80 ms ease-out; release springs back |
 | Focus-visible | 2px focus ring (`focus` token) with 2px offset; never removed |
-| Disabled | 40% opacity, no hover, `aria-disabled`, explains why on tap if not obvious |
+| Disabled | 40% opacity, no hover. Natively disabled, so Tab skips it and a tap does nothing: when the reason isn't obvious, say it in visible text next to the control |
 | Loading | Keeps its size; spinner or progress replaces the label; double submits blocked |
 | Selected | Green border and soft glow (answer options, chips, tabs) |
 
@@ -59,4 +59,4 @@ Largest Contentful Paint under 2.5 s Â· Interaction to Next Paint under 200 ms Â
 WCAG 2.2 AA: contrast 4.5:1 for text, 3:1 for controls; full keyboard use; visible focus; screen-reader labels for icons and charts; touch targets at least 44 x 44px; colour is never the only signal (readiness uses colour, shape and words).
 
 ## Arabic and right-to-left
-Use logical CSS properties (`margin-inline-start`, not `margin-left`). Layouts mirror; icons with direction (arrows, chevrons) flip; numbers and code stay left-to-right. Every screen is checked in Arabic before merge.
+Use logical CSS properties (`margin-inline-start`, not `margin-left`). Layouts mirror; icons with direction (arrows, chevrons) flip; numbers and code stay left-to-right. Arabic text gets taller line heights than Latin for headings, captions and metadata, so the marks above and below a line don't touch the next. Every screen is checked in Arabic before merge.
