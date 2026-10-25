@@ -14,6 +14,10 @@ export default function config(phase: string): NextConfig {
   return {
     reactCompiler: true,
     poweredByHeader: false,
+    // A self-contained server for the image (apps/web/Dockerfile). Traced from the repository root,
+    // because pnpm keeps the packages there.
+    output: "standalone",
+    outputFileTracingRoot: path.resolve(import.meta.dirname, "../.."),
     experimental: { swcPlugins: [linguiMacroSwcPlugin()] },
     turbopack: {
       rules: {

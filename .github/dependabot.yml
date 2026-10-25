@@ -34,3 +34,9 @@ updates:
     groups:
       javascript:
         update-types: [minor, patch]
+  - package-ecosystem: docker
+    directories: ["/apps/web", "/services/api"]
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: chore, include: scope }
+    labels: ["dependencies"]
