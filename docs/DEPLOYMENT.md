@@ -14,7 +14,7 @@ Three environments run the same images with different data and secrets. Changes 
 | Data | Seeded demo course | Seeded demo course and test accounts | Real users; never copied to other environments |
 
 ## How a change reaches production
-1. **A pull request** runs CI: lint, types, tests, security scans, end-to-end tests, and phone and desktop screenshots in English and Arabic.
+1. **A pull request** runs CI: lint, types, tests, security scans, end-to-end tests, and phone and desktop screenshots in English and Arabic. A pull request that changes a Dockerfile, a lockfile or the deploy config also builds both images, without pushing them.
 2. **Merging to `main`:**
    - Once `ci-ok` is green, CI builds the `web` and `api` images and tags them `sha-<commit>`.
    - It signs their build provenance and pushes them to GitHub Container Registry.
@@ -25,11 +25,19 @@ Three environments run the same images with different data and secrets. Changes 
    - It then adds the release tag to the same image digests, deploys them with Kamal and runs the smoke test again.
    - If no staging image was built for the release commit, the promotion fails.
 
-Production runs the images built for staging; nothing is rebuilt. Anyone can verify that an image came from this repository's CI:
+Production runs the images built for staging; nothing is rebuilt. Each image carries the commit it was built from (`APP_COMMIT`; `GET /api/health` reports the web image's, and both are built from the same commit), and the deploy sets the version (`APP_VERSION`). Anyone can verify that an image came from this repository's CI:
 
 ```bash
 gh attestation verify oci://ghcr.io/rayanalyasi/verdict/api:v0.4.0 -R RayanAlyasi/verdict
 ```
+
+## Images
+- **`apps/web/Dockerfile`:** Next.js's standalone server on Node 26, run as the non-root `node` user. `pnpm --dir apps/web start` runs the same server locally after a build.
+- **`services/api/Dockerfile`:** Python 3.14 with the locked dependencies, run as a non-root user. By default it runs `alembic upgrade head`, then starts uvicorn; each worker role runs `python -m verdict.worker <queue>` instead.
+- **Both:** built from the repository root for arm64, with base images pinned by digest (Dependabot proposes updates after the same 7-day wait as other dependencies; for an urgent operating-system fix, update the digest by hand), current root certificates and the `org.opencontainers.image.licenses` label.
+- **Storage:** the api writes uploads to `/app/storage`. Mount a named volume there; a host folder must belong to uid 1000.
+
+Build and run one locally with `docker build -f services/api/Dockerfile --build-arg APP_COMMIT=$(git rev-parse HEAD) -t verdict-api .`.
 
 ## Rollback
 Run the **deploy** workflow by hand from `main` with `rollback_to` set to the version to restore, for example `v0.3.2`. After approval, it runs `kamal rollback` for both services. Migrations are backward compatible, so rolling back code is safe.

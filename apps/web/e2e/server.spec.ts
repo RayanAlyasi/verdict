@@ -39,7 +39,7 @@ function startWeb(
   env: NodeJS.ProcessEnv,
 ): Promise<{ code: number | null; output: string }> {
   return new Promise((resolve) => {
-    const server = spawn("pnpm", ["exec", "next", "start", "--port", String(port)], { env });
+    const server = spawn("pnpm", ["start", "--port", String(port)], { env });
     let output = "";
     server.stdout.on("data", (chunk) => (output += chunk));
     server.stderr.on("data", (chunk) => (output += chunk));
@@ -75,7 +75,7 @@ async function withWeb(
   env: NodeJS.ProcessEnv,
   check: (base: string) => Promise<void>,
 ) {
-  const server = spawn("pnpm", ["exec", "next", "start", "--port", String(port)], {
+  const server = spawn("pnpm", ["start", "--port", String(port)], {
     env,
     detached: true,
   });

@@ -24,6 +24,7 @@ jobs:
       ai: ${{ steps.c.outputs.ai }}
       scripts: ${{ steps.c.outputs.scripts }}
       deployable: ${{ steps.c.outputs.deployable }}
+      images: ${{ steps.c.outputs.images }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -51,8 +52,10 @@ jobs:
           # evals waits for an approval, so it stays off until the suite exists.
           ai=false; [ "$api_exists" = true ] && [ -d services/api/evals ] && [ "$(touches '^services/api/(verdict/(ai_gateway|generation|verification|ingestion|course_map)/|evals/)')" = true ] && ai=true
           scripts=$(touches "(^scripts/|\.sh$|\.md$|^\.github/workflows/)")
+          # What a broken image would otherwise first show as a failed staging deploy.
+          images=false; [ "$(touches "(Dockerfile$|^\.dockerignore$|^package\.json$|^apps/web/(package\.json|next\.config\.ts)$|^pnpm-(lock|workspace)\.yaml$|^services/api/(pyproject\.toml|uv\.lock|\.python-version)$|^config/deploy|^\.github/workflows/(ci|deploy)\.yml$)")" = true ] && images=true
 
-          { echo "web=$web"; echo "api=$api"; echo "full=$full"; echo "ai=$ai"; echo "scripts=$scripts"; echo "deployable=$deployable"; } | tee -a "$GITHUB_OUTPUT"
+          { echo "web=$web"; echo "api=$api"; echo "full=$full"; echo "ai=$ai"; echo "scripts=$scripts"; echo "deployable=$deployable"; echo "images=$images"; } | tee -a "$GITHUB_OUTPUT"
 
   web:
     name: web
@@ -266,10 +269,83 @@ jobs:
       contents: read
     uses: $/.github/workflows/evals.yml
 
+  images:
+    name: images (${{ matrix.image }})
+    needs: changes
+    # Pull requests only: after a merge, deploy.yml builds and pushes the images itself.
+    if: github.event_name == 'pull_request' && needs.changes.outputs.images == 'true'
+    runs-on: ubuntu-24.04-arm # the servers are arm64, as in deploy.yml
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        include:
+          - image: api
+            dockerfile: services/api/Dockerfile
+          - image: web
+            dockerfile: apps/web/Dockerfile
+    # The api image starts for real against it: migrations, then serving.
+    services:
+      db:
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_USER: verdict
+          POSTGRES_PASSWORD: verdict
+          POSTGRES_DB: verdict
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U verdict" --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the image as deploy.yml does, without pushing it
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/arm64
+          push: false
+          load: true
+          tags: verdict-${{ matrix.image }}:ci
+          build-args: APP_COMMIT=${{ github.sha }}
+      # Built isn't enough: a file the standalone build left out only shows when the server runs.
+      - name: Start the web image and load a page
+        if: matrix.image == 'web'
+        run: |
+          set -euo pipefail
+          docker run --detach --name web --publish 127.0.0.1:3000:3000 \
+            --env API_URL=http://127.0.0.1:9 --env WEB_URL=http://localhost:3000 \
+            --env BETTER_AUTH_SECRET=ci-only-not-a-secret verdict-web:ci
+          for _ in $(seq 1 30); do curl -fs -o /dev/null http://127.0.0.1:3000/en && exit 0; sleep 1; done
+          docker logs web
+          exit 1
+      - name: Start the api image as deployed (migrate, then serve) and a worker, as a non-root user
+        if: matrix.image == 'api'
+        run: |
+          set -euo pipefail
+          settings=(--network host --env APP_ENV=test --env DEPLOYMENT_MODE=self_hosted
+            --env DATABASE_URL=postgresql+psycopg://verdict:verdict@127.0.0.1:5432/verdict)
+          [ "$(docker run --rm verdict-api:ci id -u)" != 0 ]
+          docker run --detach --name api "${settings[@]}" verdict-api:ci
+          ok=false
+          for _ in $(seq 1 60); do curl -fs http://127.0.0.1:8000/health && { ok=true; break; }; sleep 1; done
+          [ "$ok" = true ] || { docker logs api; exit 1; }
+          docker run --detach --name worker "${settings[@]}" verdict-api:ci python -m verdict.worker maintenance
+          ok=false
+          for _ in $(seq 1 30); do docker logs worker 2>&1 | grep -q "Queue: maintenance" && { ok=true; break; }; sleep 1; done
+          # DBOS can log the queue before the worker has finished starting, so check it stayed up.
+          sleep 3
+          [ "$ok" = true ] && [ "$(docker inspect --format '{{.State.Running}}' worker)" = true ] && exit 0
+          docker logs worker
+          exit 1
+
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [changes, web, api, contract, e2e, zizmor, scripts, dependency-review, evals]
+    needs: [changes, web, api, contract, e2e, images, zizmor, scripts, dependency-review, evals]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     permissions: {}
