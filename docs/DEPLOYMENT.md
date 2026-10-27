@@ -69,13 +69,14 @@ These steps run on the server, as the private hosting runbook describes; `<envir
   - If Postgres itself never finished creating the database, nothing is stored yet. Remove the container (`docker rm -f verdict-<environment>-db`), empty the data folder, and deploy again.
 - **Rotating a role's password** (the apps keep their own roles throughout):
   1. Make a new one with `openssl rand -hex 32`.
-  2. Set it on the role. psql asks for it twice and sends only a hash, so it never appears in a log or a process list:
+  2. Set it on the role, `verdict_api` or `verdict_web`. psql asks for it twice and sends only a hash, so it never appears in a log or a process list:
 
      ```bash
      docker exec -it verdict-<environment>-db psql -U verdict -d verdict -c '\password verdict_api'
+     docker exec -it verdict-<environment>-db psql -U verdict -d verdict -c '\password verdict_web'
      ```
-  3. Put the same value in the environment's `VERDICT_API_DB_PASSWORD` secret (or `VERDICT_WEB_DB_PASSWORD` for `verdict_web`).
-  4. Run the environment's last deploy again. Until it finishes, connections the api already holds keep working, but new ones fail.
+  3. Put the same value in the environment's matching secret: `VERDICT_API_DB_PASSWORD` for `verdict_api`, `VERDICT_WEB_DB_PASSWORD` for `verdict_web`.
+  4. Run the environment's last deploy again. Until it finishes, connections the app already holds keep working, but new ones fail.
 
 ## If a secret leaks
 Rotate it at its source first, then:
