@@ -1,0 +1,23 @@
+name: preview-request
+# Tells preview.yml that a pull request's preview may need to change (specs/014). A pull request runs
+# its own copy of this file, so it builds nothing and holds nothing: preview.yml, from main, checks
+# the pull request through the API and builds the images itself.
+run-name: Preview for pull request ${{ github.event.pull_request.number }}
+on:
+  pull_request:
+    types: [labeled, unlabeled, synchronize, reopened, closed]
+permissions: {}
+
+jobs:
+  # preview.yml acts only when this ran; other labels' events skip it.
+  notify:
+    name: notify
+    if: >-
+      ((github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name == 'preview') ||
+      (github.event.action != 'labeled' && github.event.action != 'unlabeled' &&
+        contains(github.event.pull_request.labels.*.name, 'preview'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - run: echo "preview.yml decides what this event means for the preview."

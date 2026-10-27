@@ -9,7 +9,7 @@ The maintainer reviews pull requests from screenshots and staging, and staging s
 
 ## User flow
 1. The maintainer opens a pull request from a branch in this repository and adds the `preview` label.
-2. The images build (a few minutes), then the bot comments that the preview is deploying.
+2. The images build from the pull request's commit (a few minutes), then the bot comments that the preview is deploying.
 3. About two minutes later the comment shows the link (`https://verdict-preview-1.alyasi.tech` or `-2`) and the commit it shows. The link opens behind the same Cloudflare Access login as staging.
 4. Each push from the maintainer to that branch updates the preview and the comment. Its data stays.
 5. Removing the label, closing the pull request, or merging it removes the preview and its data, frees its slot, and the comment says so.
@@ -17,11 +17,11 @@ The maintainer reviews pull requests from screenshots and staging, and staging s
 
 ## UI and states
 One bot comment per pull request, edited in place, never a new comment per push:
-- **Deploying:** "Deploying a preview of `abc1234`…". The build itself runs without the right to comment, so the comment appears once deploying starts.
+- **Deploying:** "Deploying a preview of `abc1234`…", once the images are built.
 - **Ready:** "Preview of `abc1234`: https://verdict-preview-1.alyasi.tech". It reports the version the preview's `/api/health` returns, so a stale link can't pass for a fresh one.
 - **Waiting:** "Both preview slots are in use (#12, #14). Remove the `preview` label from one or close it, then add the label here again."
 - **Failed:** "The preview of `abc1234` didn't build" or "didn't deploy", with a link to the run. A failed update leaves the previous version of the preview running.
-- **Not deployed:** a commit someone other than the owner pushed: "`abc1234` wasn't deployed because someone other than the repository owner pushed it. Push again, or re-run its preview-build run, to deploy it."
+- **Not deployed:** a commit someone other than the owner pushed: "`abc1234` wasn't deployed because someone other than the repository owner pushed it. Push again, or re-run its preview-request run, to deploy it."
 - **Removed:** "Preview removed" and why (label removed, closed or merged).
 
 Copy follows `verdict-voice` for tone, though only the maintainer reads it.
@@ -38,7 +38,7 @@ None changes. AI features behave as in staging, within the preview cap.
 
 ## Security and privacy
 - **Only the maintainer's code runs.** A preview deploys only a commit the repository owner pushed, according to the repository's activity log, on a branch in this repository. Adding the label doesn't vouch for a commit someone else pushed. Pull requests from forks, and pushes by anyone else (including CodeRabbit's commits), never deploy; the owner's next push, or the owner re-running the build, does.
-- **The pull request can't change how it's deployed.** An unprivileged workflow builds the images from the pull request with no secrets and uploads them as an artifact. A separate workflow from `main` (`workflow_run`) checks the pull request through the API (who pushed the commit, the label, a branch in this repository, still open), then deploys. It ignores anything the build claims about itself, and loads the artifact on the CI runner first, sending the server only the image tag it expects.
+- **The pull request can't change how it's deployed.** A workflow the pull request can edit only reports that something changed. A separate workflow from `main` (`workflow_run`) checks the pull request through the API (who pushed the commit, the label, a branch in this repository, still open). It then builds the images itself from that commit, in a job with no secrets or server access, and deploys them. Nothing the pull request's own workflow produces is used.
 - **Previews never see staging's or production's data.** Each has its own database and passwords. They share Docker's `kamal` network with staging and production, as staging does with production; separate passwords keep them apart.
 - **Previews are behind Cloudflare Access** (the maintainer's `Owner` policy), like staging.
 - **Previews hold no real student data:** sign-in, when it arrives, uses the staging Google client.
