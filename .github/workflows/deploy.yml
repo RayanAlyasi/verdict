@@ -9,6 +9,34 @@ on:
         description: "Environment to deploy (staging)"
         type: string
         required: true
+    # Required, so a caller that forgets one fails instead of deploying with an empty value.
+    secrets:
+      KAMAL_HOST:
+        required: true
+      TS_OAUTH_CLIENT_ID:
+        required: true
+      TS_AUDIENCE:
+        required: true
+      KAMAL_SSH_PRIVATE_KEY:
+        required: true
+      KAMAL_SSH_KNOWN_HOSTS:
+        required: true
+      BETTER_AUTH_SECRET:
+        required: true
+      ANTHROPIC_API_KEY:
+        required: true
+      CLOUDFLARE_TUNNEL_TOKEN:
+        required: true
+      POSTGRES_PASSWORD:
+        required: true
+      VERDICT_API_DB_PASSWORD:
+        required: true
+      VERDICT_WEB_DB_PASSWORD:
+        required: true
+      CF_ACCESS_CLIENT_ID:
+        required: true
+      CF_ACCESS_CLIENT_SECRET:
+        required: true
   release:
     types: [published]
   workflow_dispatch:
@@ -110,6 +138,34 @@ jobs:
             dest=production; version="$RELEASE_TAG"; mode=promote
           fi
           { echo "dest=$dest"; echo "version=$version"; echo "mode=$mode"; } | tee -a "$GITHUB_OUTPUT"
+      # A missing environment secret reads as an empty string, with no error of its own.
+      - name: Check the environment's secrets and variables are set (names only, never values)
+        env:
+          DEST: ${{ steps.plan.outputs.dest }}
+          KAMAL_HOST: ${{ secrets.KAMAL_HOST }}
+          TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          TS_AUDIENCE: ${{ secrets.TS_AUDIENCE }}
+          KAMAL_SSH_PRIVATE_KEY: ${{ secrets.KAMAL_SSH_PRIVATE_KEY }}
+          KAMAL_SSH_KNOWN_HOSTS: ${{ secrets.KAMAL_SSH_KNOWN_HOSTS }}
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLOUDFLARE_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          VERDICT_API_DB_PASSWORD: ${{ secrets.VERDICT_API_DB_PASSWORD }}
+          VERDICT_WEB_DB_PASSWORD: ${{ secrets.VERDICT_WEB_DB_PASSWORD }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          APP_URL: ${{ vars.APP_URL }}
+          AI_DAILY_SPEND_LIMIT_USD: ${{ vars.AI_DAILY_SPEND_LIMIT_USD }}
+        run: |
+          set -euo pipefail
+          required=(KAMAL_HOST TS_OAUTH_CLIENT_ID TS_AUDIENCE KAMAL_SSH_PRIVATE_KEY KAMAL_SSH_KNOWN_HOSTS
+            BETTER_AUTH_SECRET ANTHROPIC_API_KEY CLOUDFLARE_TUNNEL_TOKEN POSTGRES_PASSWORD
+            VERDICT_API_DB_PASSWORD VERDICT_WEB_DB_PASSWORD APP_URL AI_DAILY_SPEND_LIMIT_USD)
+          if [ "$DEST" = staging ]; then required+=(CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET); fi
+          missing=()
+          for name in "${required[@]}"; do [ -n "${!name:-}" ] || missing+=("$name"); done
+          if [ "${#missing[@]}" -gt 0 ]; then echo "::error::Set these in the $DEST environment: ${missing[*]}"; exit 1; fi
       - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io
