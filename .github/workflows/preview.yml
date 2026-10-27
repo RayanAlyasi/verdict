@@ -156,6 +156,9 @@ jobs:
           SLOT: ${{ needs.plan.outputs.slot }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          set -euo pipefail
+          # Not if a newer commit has replaced it: that one's comment stands.
+          [ "$(gh api "repos/$REPO/pulls/$PR" --jq .head.sha)" = "$SHA" ] || exit 0
           scripts/preview-comment.sh "$PR" "$SLOT" "The preview of \`${SHA:0:7}\` didn't build: $RUN_URL"
 
   apply:
@@ -179,7 +182,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-      actions: read
       id-token: write # proves to Tailscale that this job runs in the preview environment
     env:
       GH_TOKEN: ${{ github.token }}
@@ -355,7 +357,9 @@ jobs:
           set -euo pipefail
           # Only while the claim is still this pull request's, so a slot the sweep freed and another
           # pull request took isn't touched.
-          if [ -n "$SLOT" ] && [ "$(ssh "$KAMAL_HOST" "cat ~/.verdict-previews/$SLOT 2>/dev/null")" = "$PR" ]; then
+          holder=""
+          if [ -n "$SLOT" ]; then holder=$(ssh "$KAMAL_HOST" "cat ~/.verdict-previews/$SLOT 2>/dev/null || true"); fi
+          if [ -n "$SLOT" ] && [ "$holder" = "$PR" ]; then
             scripts/preview-remove.sh "$KAMAL_HOST" "$SLOT"
             ssh "$KAMAL_HOST" "rm -f ~/.verdict-previews/$SLOT"
           fi
