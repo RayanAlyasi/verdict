@@ -1,9 +1,6 @@
 # Production, public and reached only through its own Cloudflare Tunnel.
 proxy:
   host: verdict.alyasi.tech
-  run:
-    # As in deploy.api.production.yml: the server's other proxy holds ports 80 and 443.
-    publish: false
 
 env:
   clear:

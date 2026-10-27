@@ -90,7 +90,7 @@ When this ships, a contributor can clone the repo, run one command and see the V
   - In `hosted` mode, `AI_DAILY_SPEND_LIMIT_USD` is required the same way, so a misconfigured deploy fails its smoke test instead of spending without a cap.
 - **Kamal** (ADR 0011):
   - `config/deploy.api.yml` and `config/deploy.web.yml`, each with `staging` and `production` destinations, one role per process type, and cloudflared as an accessory.
-  - SSH via `~/.ssh/config` (the `ssh` `config` option), and `.kamal/secrets` matching the list in `deploy.yml`.
+  - SSH via `~/.ssh/config` (the `ssh` `config` option), and `.kamal/secrets-common` matching the list in `deploy.yml`.
   - Kamal installed from a `Gemfile` and `Gemfile.lock` with checksums, replacing the version-pinned `gem install` in `deploy.yml`.
 - **CI/CD** is already written (ADR 0012): `ci.yml`, `deploy.yml`, `evals.yml`, `dependency-health.yml`. This spec makes them run for real:
   - the root `package.json` with `packageManager` and the scripts CI calls (version fields stay untouched; the git tag is the version);

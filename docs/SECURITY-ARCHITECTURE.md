@@ -34,7 +34,7 @@ Students' accounts, uploaded course materials (which may include copyrighted or 
 
 ## If a secret leaks
 1. Revoke and rotate the credential immediately at the provider.
-2. Update it in GitHub environment secrets; redeploy with Kamal.
+2. Update it in GitHub environment secrets and apply it as [DEPLOYMENT.md](DEPLOYMENT.md#if-a-secret-leaks) describes for that secret: most need only a redeploy, but the database's and the tunnel's need a step on the server.
 3. Check provider logs for misuse during the exposure window.
 4. Remove it from git history if it was committed, then force-push only after the rotation (rotation is what actually fixes it).
 5. Write a short incident note in the private security log.

@@ -23,7 +23,7 @@ Three environments run the same images with different data and secrets. Changes 
      - the api deploys first and migrates, so the web app never relies on a migration that hasn't run;
      - the old workers stop before the new ones start, since two workers with the same executor ID could both resume a workflow;
      - then the web app deploys.
-   - A smoke test checks the health endpoint.
+   - A smoke test checks the health endpoint, and that it reports the version just deployed.
 3. **Publishing a GitHub Release** (for example `v0.4.0`) once staging looks good:
    - The production job waits for the maintainer's approval in the `production` environment.
    - It then adds the release tag to the same image digests, deploys them with Kamal and runs the smoke test again.
@@ -45,7 +45,7 @@ gh attestation verify oci://ghcr.io/rayanalyasi/verdict/api:v0.4.0 -R RayanAlyas
 Build and run one locally with `docker build -f services/api/Dockerfile --build-arg APP_COMMIT=$(git rev-parse HEAD) -t verdict-api .`.
 
 ## Rollback
-Run the **deploy** workflow by hand from `main` with `rollback_to` set to the version to restore, for example `v0.3.2`. After approval, it stops the workers, then runs `kamal rollback` for the api and its workers, then for the web app. Kamal keeps the containers of the last three versions, so it can go back that far.
+Run the **deploy** workflow by hand from `main` with `rollback_to` set to the version to restore, for example `v0.3.2`. After approval, it deploys that release's images again, the same way as any deploy, and the smoke test confirms the version. It doesn't use `kamal rollback`, which needs the old containers, and Kamal's pruning may already have removed them.
 
 Migrations are backward compatible, so rolling back code is safe. The older api starts against a database that a newer one migrated, and leaves it as it is.
 
@@ -53,6 +53,7 @@ Migrations are backward compatible, so rolling back code is safe. The older api 
 The api migrates (`python -m verdict.migrate`) before it answers its health check, so a new version takes traffic only after its migrations have run. kamal-proxy waits 3 minutes for that (`deploy_timeout` in `config/deploy.api.yml`); raise it before a migration that takes longer. Migrations follow expand and contract:
 - **Never drop or rename a column** in the same release that stops using it; remove it in a later release.
 - **Add new columns** as nullable or with defaults.
+- **Never delete a migration that has reached staging;** undo it with a new one. The api treats a database revision it doesn't know as one from a newer version and leaves the database alone, so a deleted revision would stop later migrations from running.
 
 ## The deployed database
 Each environment's Postgres runs on the server as a Kamal accessory (`config/deploy.api.yml`), with its data in `/var/lib/verdict/<environment>/postgres`. When that folder is empty, Postgres creates the database and runs `config/db/`: the api and web roles, then their passwords from `VERDICT_API_DB_PASSWORD` and `VERDICT_WEB_DB_PASSWORD`. The apps never connect as the superuser.
@@ -75,6 +76,14 @@ These steps run on the server, as the private hosting runbook describes; `<envir
      ```
   3. Put the same value in the environment's `VERDICT_API_DB_PASSWORD` secret (or `VERDICT_WEB_DB_PASSWORD` for `verdict_web`).
   4. Run the environment's last deploy again. Until it finishes, connections the api already holds keep working, but new ones fail.
+
+## If a secret leaks
+Rotate it at its source first, then:
+- **App secrets** (`BETTER_AUTH_SECRET`, `ANTHROPIC_API_KEY`, `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET`): update the environment secret and run the environment's last deploy again.
+- **The api and web roles' passwords:** follow [rotating a role's password](#the-deployed-database).
+- **`POSTGRES_PASSWORD`:** set the new one on the server with `docker exec -it verdict-<environment>-db psql -U verdict -d verdict -c '\password verdict'`, then update the secret. Postgres reads the variable only when it creates the database.
+- **`CLOUDFLARE_TUNNEL_TOKEN`:** a deploy leaves a running tunnel as it is. Update the secret, remove the tunnel container on the server (`docker rm -f verdict-<environment>-tunnel`), then run the deploy again, which starts it with the new token. The site is down in between.
+- **The deploy key** (`KAMAL_SSH_PRIVATE_KEY`): make a new key pair, replace the deploy user's `authorized_keys` on the server, then update the secret.
 
 ## Running Kamal by hand
 Deploys run in CI. For logs or a one-off look, a maintainer on the private network can run Kamal from a checkout: run `bundle install`, export `KAMAL_HOST`, point SSH at the deploy key as `deploy.yml` does, then for example run `bundle exec kamal app logs -c config/deploy.api.yml -d staging -r worker-ingestion`. Commands that deploy or boot need every secret in `.kamal/secrets-common`, so leave those to CI.

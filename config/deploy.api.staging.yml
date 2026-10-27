@@ -1,10 +1,8 @@
 # Staging, behind an access gate and reached only through its own Cloudflare Tunnel.
 proxy:
-  host: verdict-staging.alyasi.tech
-  run:
-    # Another proxy on this server holds ports 80 and 443. The tunnel reaches kamal-proxy on
-    # Docker's network instead, so it publishes no ports.
-    publish: false
+  hosts:
+    - verdict-staging.alyasi.tech
+    - verdict-api-staging
 
 env:
   clear:
@@ -14,7 +12,7 @@ env:
 accessories:
   tunnel:
     service: verdict-staging-tunnel
-    image: cloudflare/cloudflared:2026.10.1
+    image: cloudflare/cloudflared:2026.10.1@sha256:a15a3b50b8dabd57ac2090e9484c0247dba9dfa1f0df4d298d4317f9d69eb2d5
     host: <%= ENV.fetch("KAMAL_HOST") %>
     cmd: tunnel --no-autoupdate run
     env:

@@ -23,12 +23,11 @@ ssh:
 
 servers:
   api:
+    # One host: migrations take no lock yet, so add one before a second api host (#28).
     hosts:
       - <%= ENV.fetch("KAMAL_HOST") %>
     options:
       memory: 768m
-      # The web app's API_URL: a stable name for whichever api container is running.
-      network-alias: verdict-api-<%= ENV["KAMAL_DESTINATION"] %>
   worker-ingestion: &worker
     hosts:
       - <%= ENV.fetch("KAMAL_HOST") %>
@@ -52,11 +51,24 @@ servers:
 
 proxy:
   app_port: 8000
-  # The browser calls the api on the web app's domain; only /api/v1 reaches it, unchanged.
-  path_prefix: /api/v1
+  # The browser calls the api on the web app's domain, and the web server on the api's own name in
+  # each destination file. Only these paths reach it, unchanged.
+  path_prefixes:
+    - /api/v1
+    - /health
   strip_path_prefix: false
   healthcheck:
     path: /health
+  # Set when kamal-proxy boots, for every app on the server, so it's the same in deploy.web.yml.
+  run:
+    # Only each environment's tunnel reaches kamal-proxy, over Docker's network.
+    publish: false
+    # Names the web server uses to reach each environment's api through kamal-proxy, which sends
+    # requests only to a healthy container, unlike a Docker alias on the api's containers.
+    options:
+      network-alias:
+        - verdict-api-staging
+        - verdict-api-production
 
 # The api migrates before it answers its health check, so this bounds the slowest migration.
 deploy_timeout: 180
@@ -80,7 +92,7 @@ accessories:
     # Kamal doesn't add the destination to accessory names, so the name carries it.
     service: verdict-<%= ENV["KAMAL_DESTINATION"] %>-db
     # Not updated by deploys: `kamal accessory reboot db` picks up a new image.
-    image: pgvector/pgvector:0.8.7-pg18-trixie
+    image: pgvector/pgvector:0.8.7-pg18-trixie@sha256:9d9c930220cb9bf2f956d10a8f909cf9973d9672ca0278aef2c1e6facccad2e0
     host: <%= ENV.fetch("KAMAL_HOST") %>
     env:
       clear:

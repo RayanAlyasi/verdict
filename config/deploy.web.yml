@@ -31,6 +31,13 @@ proxy:
   # A page, not /api/health: that also checks the api, which shouldn't block a web deploy.
   healthcheck:
     path: /en
+  # As in deploy.api.yml, which explains it: kamal-proxy's boot settings, shared by every app.
+  run:
+    publish: false
+    options:
+      network-alias:
+        - verdict-api-staging
+        - verdict-api-production
 
 deploy_timeout: 60
 retain_containers: 3
@@ -41,7 +48,8 @@ asset_path: /app/apps/web/.next/static
 
 env:
   clear:
-    API_URL: http://verdict-api-<%= ENV["KAMAL_DESTINATION"] %>:8000
+    # The api's name on kamal-proxy (deploy.api.yml), not its container.
+    API_URL: http://verdict-api-<%= ENV["KAMAL_DESTINATION"] %>
     # The version being deployed, which GET /api/health reports; deploy.yml sets it.
     APP_VERSION: "<%= ENV["APP_VERSION"] %>"
   secret:

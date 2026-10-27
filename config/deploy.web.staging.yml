@@ -1,9 +1,6 @@
 # Staging, behind an access gate and reached only through its own Cloudflare Tunnel.
 proxy:
   host: verdict-staging.alyasi.tech
-  run:
-    # As in deploy.api.staging.yml: the server's other proxy holds ports 80 and 443.
-    publish: false
 
 env:
   clear:

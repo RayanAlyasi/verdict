@@ -158,7 +158,6 @@ jobs:
         env:
           DEST: ${{ steps.plan.outputs.dest }}
           VERSION: ${{ steps.plan.outputs.version }}
-          MODE: ${{ steps.plan.outputs.mode }}
           KAMAL_HOST: ${{ secrets.KAMAL_HOST }}
           APP_VERSION: ${{ steps.plan.outputs.version }}
           KAMAL_REGISTRY_USERNAME: ${{ github.actor }}
@@ -177,21 +176,18 @@ jobs:
           web=(-c config/deploy.web.yml -d "$DEST")
           # The database and tunnel: created by the first deploy, left running after that.
           bundle exec kamal accessory boot all "${api[@]}"
+          # A rollback deploys the older version's images like any other: `kamal rollback` needs the
+          # old containers, which Kamal's pruning may already have removed.
+          bundle exec kamal deploy "${api[@]}" --skip-push --version "$VERSION" --roles api
           # Old workers stop before new ones start: two with the same executor ID could both resume
           # a workflow. A failed api deploy leaves them running.
-          if [ "$MODE" = "rollback" ]; then
-            bundle exec kamal app stop "${api[@]}" --roles 'worker-*'
-            bundle exec kamal rollback "$VERSION" "${api[@]}"
-            bundle exec kamal rollback "$VERSION" "${web[@]}"
-          else
-            bundle exec kamal deploy "${api[@]}" --skip-push --version "$VERSION" --roles api
-            bundle exec kamal app stop "${api[@]}" --roles 'worker-*'
-            bundle exec kamal app boot "${api[@]}" --version "$VERSION" --roles 'worker-*'
-            bundle exec kamal deploy "${web[@]}" --skip-push --version "$VERSION"
-          fi
+          bundle exec kamal app stop "${api[@]}" --roles 'worker-*'
+          bundle exec kamal app boot "${api[@]}" --version "$VERSION" --roles 'worker-*'
+          bundle exec kamal deploy "${web[@]}" --skip-push --version "$VERSION"
       - name: Smoke test
         env:
           APP_URL: ${{ vars.APP_URL }}
+          VERSION: ${{ steps.plan.outputs.version }}
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-        run: ./scripts/smoke-test.sh "$APP_URL"
+        run: ./scripts/smoke-test.sh "$APP_URL" "$VERSION"
