@@ -1,0 +1,8 @@
+# Staging, behind an access gate and reached only through its own Cloudflare Tunnel.
+proxy:
+  host: verdict-staging.alyasi.tech
+
+env:
+  clear:
+    APP_ENV: staging
+    WEB_URL: https://verdict-staging.alyasi.tech

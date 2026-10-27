@@ -42,3 +42,14 @@ updates:
     cooldown: { default-days: 7 }
     commit-message: { prefix: chore, include: scope }
     labels: ["dependencies"]
+  # Kamal and its gems, for deploys only. The accessory images in config/deploy.*.yml are updated
+  # by hand, since Dependabot doesn't read Kamal's config.
+  - package-ecosystem: bundler
+    directory: "/"
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: chore, include: scope }
+    labels: ["dependencies"]
+    groups:
+      kamal:
+        patterns: ["*"]

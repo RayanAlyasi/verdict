@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-23
 - Supersedes: 0007, and the hosting tool (Coolify) in 0003. Image promotion and the approval gate from 0003 still stand.
+- Amended: 2026-10-27. Deploys reach SSH over a private network instead of the tunnel, which carries only web traffic, and a rollback deploys an earlier version's images again.
 
 ## Context
 ADR 0003 assumed Coolify. Checked against Verdict's needs, Coolify falls short in four ways:
@@ -13,13 +14,13 @@ ADR 0003 assumed Coolify. Checked against Verdict's needs, Coolify falls short i
 
 ## Decision
 - **Deploys:** Kamal 2 (37signals, MIT licence) deploys the images CI built.
-  - GitHub Actions runs it over SSH through the Cloudflare Tunnel, so no ports are open and no dashboard runs on the server.
+  - GitHub Actions runs it over SSH on a private network, as a deploy user whose key works only from there. One Cloudflare Tunnel per environment carries web traffic, so no web ports are open, and Kamal adds no dashboard or agent to the server.
   - Config lives in `config/deploy.api.yml` and `config/deploy.web.yml` (one Kamal service per image), each with `staging` and `production` destinations. The api deploys first, so migrations run before the web app relies on them.
   - Each process type is one Kamal role: web, api, and one worker role per queue.
 - **Promotion (as in 0003):**
   - Merging to `main` deploys `sha-<commit>` to staging.
   - A GitHub Release deploys the same image to production after approval.
-  - `kamal rollback <version>` restores an earlier version.
+  - A rollback deploys an earlier release's images again; `kamal rollback` would need old containers that pruning may have removed.
 - **Servers:** cloud VMs. CI builds images for the servers' CPU architecture on GitHub's native runners.
 - **Database:** Postgres 18 with pgvector.
   - WAL-G (Apache 2.0) archives database changes continuously to object storage at another provider. That allows restoring to any minute.
@@ -38,7 +39,7 @@ ADR 0003 assumed Coolify. Checked against Verdict's needs, Coolify falls short i
 
 ## Consequences
 - **Reviewable infrastructure:** changes go through pull requests, and the setup can be rebuilt from the repo.
-- **Small attack surface:** the server runs only SSH (reached through the tunnel), Docker, kamal-proxy and our containers.
+- **Small attack surface:** Verdict adds only Docker containers to the server (kamal-proxy, the apps, the database and the tunnels), and its SSH is reachable only on the private network.
 - **Bounded data loss:** at most about a minute of data is lost, and restores are proven every month.
 - **No automatic failover:** a dead VM means minutes of downtime while it's replaced. That's accepted for the feedback phase.
 - **Lost:** one-click pull request previews.

@@ -1,0 +1,8 @@
+# Production, public and reached only through its own Cloudflare Tunnel.
+proxy:
+  host: verdict.alyasi.tech
+
+env:
+  clear:
+    APP_ENV: production
+    WEB_URL: https://verdict.alyasi.tech
