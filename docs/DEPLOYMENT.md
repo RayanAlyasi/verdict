@@ -48,10 +48,11 @@ Build and run one locally with `docker build -f services/api/Dockerfile --build-
 Adding the `preview` label to a pull request from a branch in this repository deploys it to one of two slots, `verdict-preview-1.alyasi.tech` and `verdict-preview-2.alyasi.tech`, behind the same access gate as staging ([spec 014](../specs/014-pull-request-previews.md)). A bot comment links to it.
 - **Two workflows:**
   - `preview-build.yml` builds the pull request's images with no secrets and uploads them as artifacts.
-  - `preview.yml` runs from `main` (`workflow_run`), so a pull request can't change it. It reads the pull request through the API and deploys only a labelled, current commit that the repository owner pushed or labelled. It loads only an image with the tag it expects.
+  - `preview.yml` runs from `main` (`workflow_run`), so a pull request can't change it. It reads the pull request through the API and deploys only a labelled, current commit that the repository owner pushed, according to the activity log. It loads the artifact on the CI runner and sends the server only the image tag it expects.
 - **Each preview** is the api, the workers and the web app, with a database and storage on Docker volumes of its own. Data survives the pull request's pushes; a pull request taking a slot starts empty.
 - **Slots:** the server records which pull request holds each slot in `~/.verdict-previews/<slot>`, claimed atomically. With both taken, the comment names the pull requests holding them.
-- **Removal:** closing or merging the pull request, or removing the label, removes the preview and frees its slot (`scripts/preview-remove.sh`).
+- **Removal:** closing or merging the pull request, or removing the label, removes the preview and frees its slot (`scripts/preview-remove.sh`). A sweep every 6 hours, or a manual run of `preview.yml`, removes any preview whose pull request isn't open with the label.
+- **A new destination's api name** (`proxy.run.options.network-alias` in `config/deploy.*.yml`) needs one `kamal proxy reboot`, which briefly interrupts every environment. Run it from a preview destination, which doesn't log in to the registry.
 - **The `preview` environment** accepts only `main`. Its secrets are its own, apart from staging's AI key, which previews share with a smaller daily cap.
 
 ## Rollback

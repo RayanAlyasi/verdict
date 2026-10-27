@@ -129,4 +129,4 @@ When this ships, a contributor can clone the repo, run one command and see the V
 
 ## Out of scope
 - **Later specs:** sign-in, courses and any AI features (spec 001 onwards).
-- **Not planned:** pull request preview environments (ADR 0011).
+- **Pull request previews:** [spec 014](014-pull-request-previews.md).

@@ -9,7 +9,7 @@ slot="${2:?slot required}"
 [[ $slot =~ ^[12]$ ]] || { echo "Unknown preview slot: $slot" >&2; exit 1; }
 dest="preview-$slot"
 # shellcheck disable=SC2029 # expanded here on purpose; the slot is checked above
-ssh "$host" "
+ssh -n "$host" "
   set -e
   for service in verdict-api-api-$dest verdict-web-web-$dest; do
     docker exec kamal-proxy kamal-proxy remove \$service >/dev/null 2>&1 || true

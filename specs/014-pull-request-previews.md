@@ -37,8 +37,8 @@ Copy follows `verdict-voice` for tone, though only the maintainer reads it.
 None changes. AI features behave as in staging, within the preview cap.
 
 ## Security and privacy
-- **Only the maintainer's code runs.** A preview deploys only when the repository owner added the label or pushed the commit, on a branch in this repository. Pull requests from forks, and pushes by anyone else (including CodeRabbit's commits), never deploy; the owner's next push, or a re-run, does.
-- **The pull request can't change how it's deployed.** An unprivileged workflow builds the images from the pull request with no secrets and uploads them as an artifact. A separate workflow from `main` (`workflow_run`) checks the pull request through the API (owner, label, branch in this repository, still open), then deploys. It ignores anything the build claims about itself.
+- **Only the maintainer's code runs.** A preview deploys only a commit the repository owner pushed, according to the repository's activity log, on a branch in this repository. Adding the label doesn't vouch for a commit someone else pushed. Pull requests from forks, and pushes by anyone else (including CodeRabbit's commits), never deploy; the owner's next push, or the owner re-running the build, does.
+- **The pull request can't change how it's deployed.** An unprivileged workflow builds the images from the pull request with no secrets and uploads them as an artifact. A separate workflow from `main` (`workflow_run`) checks the pull request through the API (who pushed the commit, the label, a branch in this repository, still open), then deploys. It ignores anything the build claims about itself, and loads the artifact on the CI runner first, sending the server only the image tag it expects.
 - **Previews never see staging's or production's data.** Each has its own database and passwords. They share Docker's `kamal` network with staging and production, as staging does with production; separate passwords keep them apart.
 - **Previews are behind Cloudflare Access** (the maintainer's `Owner` policy), like staging.
 - **Previews hold no real student data:** sign-in, when it arrives, uses the staging Google client.
@@ -46,7 +46,7 @@ None changes. AI features behave as in staging, within the preview cap.
 ## Acceptance criteria
 - [ ] Labelling a pull request from a branch in this repository deploys it to a free slot, and the comment links to it within 10 minutes. `/api/health` there reports the pull request's commit.
 - [ ] A push from the owner updates the preview and the comment, and data entered in the preview survives it.
-- [ ] Removing the label, closing or merging removes the preview's containers, database and volume, and frees the slot.
+- [ ] Removing the label, closing or merging removes the preview's containers, database and volume, and frees the slot. A sweep every 6 hours removes any preview whose pull request isn't open with the label, for events GitHub didn't deliver (it skips pull request events while a pull request has a merge conflict).
 - [ ] With both slots in use, labelling a third pull request deploys nothing and the comment names the pull requests holding the slots.
 - [ ] A pull request from a fork, or a commit pushed by someone other than the owner, never reaches the server (proved once with a test branch pushed by another account or app).
 - [ ] The deploying workflow runs from `main` only; changing the preview workflows in a pull request doesn't change how that pull request is deployed.

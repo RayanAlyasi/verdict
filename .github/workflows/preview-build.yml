@@ -2,13 +2,11 @@ name: preview-build
 # Builds a labelled pull request's images for preview.yml, which deploys them from main (specs/014).
 # This runs the pull request's own code, so it gets no secrets and writes nothing but artifacts.
 # preview.yml re-checks everything here through the API.
+run-name: Preview build for pull request ${{ github.event.pull_request.number }}
 on:
   pull_request:
     types: [labeled, unlabeled, synchronize, reopened, closed]
 permissions: {}
-concurrency:
-  group: preview-build-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
 
 jobs:
   build:
@@ -18,6 +16,10 @@ jobs:
         (github.event.action == 'labeled' && github.event.label.name == 'preview') ||
         ((github.event.action == 'synchronize' || github.event.action == 'reopened') &&
           contains(github.event.pull_request.labels.*.name, 'preview')))
+    # Here rather than on the workflow, so another label's event can't cancel a build.
+    concurrency:
+      group: preview-build-${{ github.event.pull_request.number }}-${{ matrix.image }}
+      cancel-in-progress: true
     runs-on: ubuntu-24.04-arm # the server is arm64
     timeout-minutes: 30
     permissions:
@@ -30,11 +32,13 @@ jobs:
           - image: web
             dockerfile: apps/web/Dockerfile
     steps:
+      # The pull request's own commit, not GitHub's merge with main, so the preview shows the branch.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      # The tag is the only one preview.yml will load: pr-<number>-<commit>.
+      # preview.yml ships only this tag to the server: pr-<number>-<commit>.
       - name: Build the image as a file
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
