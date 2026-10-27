@@ -396,7 +396,9 @@ jobs:
   deploy-staging:
     name: deploy-staging
     needs: [changes, ci-ok]
-    if: github.event_name == 'push' && needs.changes.outputs.deployable == 'true'
+    # Without a status function, a job is skipped when any job before ci-ok was (images, evals),
+    # so this checks ci-ok's own result instead.
+    if: ${{ !cancelled() && github.event_name == 'push' && needs.changes.outputs.deployable == 'true' && needs.ci-ok.result == 'success' }}
     permissions:
       contents: read
       packages: write
