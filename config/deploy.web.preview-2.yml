@@ -1,0 +1,11 @@
+# Pull request preview slot 2 (specs/014); see deploy.api.preview-2.yml.
+registry:
+  server: localhost:5555
+
+proxy:
+  host: verdict-preview-2.alyasi.tech
+
+env:
+  clear:
+    APP_ENV: staging
+    WEB_URL: https://verdict-preview-2.alyasi.tech

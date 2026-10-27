@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-23
 - Supersedes: 0007, and the hosting tool (Coolify) in 0003. Image promotion and the approval gate from 0003 still stand.
-- Amended: 2026-10-27. Deploys reach SSH over a private network instead of the tunnel, which carries only web traffic, and a rollback deploys an earlier version's images again.
+- Amended: 2026-10-27. Deploys reach SSH over a private network instead of the tunnel, which carries only web traffic, and a rollback deploys an earlier version's images again. Labelled pull requests get previews on two slots ([spec 014](../../specs/014-pull-request-previews.md)), because previews were missed.
 
 ## Context
 ADR 0003 assumed Coolify. Checked against Verdict's needs, Coolify falls short in four ways:
@@ -27,7 +27,7 @@ ADR 0003 assumed Coolify. Checked against Verdict's needs, Coolify falls short i
   - A full backup runs nightly.
   - A monthly job on our own servers restores the latest backup and checks it, and a missed or failed check alerts. Student data never goes to CI runners.
 - **Monitoring:** uptime checks run outside the app servers, so alerts still go out when production is down.
-- **No server-side pull request previews.** CI attaches English and Arabic screenshots at phone and desktop width to every UI pull request, and staging updates on every merge.
+- **Pull request previews on request:** adding the `preview` label deploys a pull request to one of two slots on the same server, behind staging's access gate ([spec 014](../../specs/014-pull-request-previews.md)). CI also attaches English and Arabic screenshots at phone and desktop width to every UI pull request, and staging updates on every merge.
 
 ## Alternatives
 | Option | Why not now |
@@ -42,9 +42,9 @@ ADR 0003 assumed Coolify. Checked against Verdict's needs, Coolify falls short i
 - **Small attack surface:** Verdict adds only Docker containers to the server (kamal-proxy, the apps, the database and the tunnels), and its SSH is reachable only on the private network.
 - **Bounded data loss:** at most about a minute of data is lost, and restores are proven every month.
 - **No automatic failover:** a dead VM means minutes of downtime while it's replaced. That's accepted for the feedback phase.
-- **Lost:** one-click pull request previews.
+- **Previews are limited:** two at a time, only for the maintainer's own pull requests from this repository, and each one costs about 700 MB of memory while it runs.
 
 ## Revisit when
 - **Students pay, or an uptime promise is made:** move to managed Postgres with automatic failover.
 - **The fleet grows:** at 3 or more servers, autoscaling on elastic capacity, or universities asking for a Helm chart, reconsider Kubernetes. We can publish a Helm chart either way.
-- **Previews are missed:** add a label-triggered Kamal preview, which is one workflow.
+- **Two preview slots aren't enough,** or contributors need previews: add slots, or move previews to their own server.

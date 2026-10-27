@@ -38,6 +38,8 @@ proxy:
       network-alias:
         - verdict-api-staging
         - verdict-api-production
+        - verdict-api-preview-1
+        - verdict-api-preview-2
 
 deploy_timeout: 60
 retain_containers: 3
