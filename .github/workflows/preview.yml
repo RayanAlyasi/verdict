@@ -333,15 +333,22 @@ jobs:
           # Each image goes just before it boots: another deploy's prune removes images that no
           # container uses yet.
           ship() { gunzip -c "$RUNNER_TEMP/images/$1.tar.gz" | ssh "$KAMAL_HOST" docker load; }
+          # How far the deploy got, for the failure comment: the parts boot one at a time, so a failure
+          # can leave some of them on the new version.
+          reached() { echo "$1" > "$RUNNER_TEMP/reached"; }
           # Whatever an earlier pull request left in this slot goes, so this one starts empty.
-          if [ "$FRESH" = true ]; then scripts/preview-remove.sh "$KAMAL_HOST" "$SLOT"; fi
+          if [ "$FRESH" = true ]; then reached reset; scripts/preview-remove.sh "$KAMAL_HOST" "$SLOT"; fi
           bundle exec kamal accessory boot all "${api[@]}"
           ship api
           bundle exec kamal app boot "${api[@]}" --version "$version" --roles api
+          reached api
           bundle exec kamal app stop "${api[@]}" --roles 'worker-*'
+          reached workers-stopped
           bundle exec kamal app boot "${api[@]}" --version "$version" --roles 'worker-*'
+          reached workers
           ship web
           bundle exec kamal app boot "${web[@]}" --version "$version"
+          reached web
           bundle exec kamal prune all "${api[@]}"
           bundle exec kamal prune all "${web[@]}"
           ./scripts/smoke-test.sh "https://verdict-$dest.alyasi.tech" "$version"
@@ -364,15 +371,25 @@ jobs:
             ssh "$KAMAL_HOST" "rm -f ~/.verdict-previews/$SLOT"
           fi
           scripts/preview-comment.sh "$PR" "" "Preview removed: $REASON."
-      # Keeps the slot in the comment, so a later removal still finds it.
+      # Keeps the slot in the comment, so a later removal still finds it, and says what's running.
       - name: Say it failed
         if: failure()
         env:
           SLOT: ${{ steps.slot.outputs.slot || needs.plan.outputs.slot }}
         run: |
           if [ "$ACTION" = deploy ]; then
+            case "$(cat "$RUNNER_TEMP/reached" 2>/dev/null || true)" in
+              "") state="Nothing on the server changed, so any earlier version of this preview still runs." ;;
+              reset) state="The slot was cleared for this pull request, so nothing is running in it yet." ;;
+              api) state="The api is on this version; the workers and the web app still run the earlier one." ;;
+              workers-stopped) state="The api is on this version and the workers are stopped; the web app still runs the earlier one." ;;
+              workers) state="The api and workers are on this version; the web app still runs the earlier one." ;;
+              *) state="Everything is on this version, but the check that it works failed." ;;
+            esac
+            link=""
+            if [ -n "$SLOT" ]; then link=" Preview: https://verdict-preview-$SLOT.alyasi.tech"; fi
             scripts/preview-comment.sh "$PR" "$SLOT" \
-              "The preview of \`${SHA:0:7}\` didn't deploy: $RUN_URL. Push again, or re-run that run, to retry."
+              "The preview of \`${SHA:0:7}\` didn't fully deploy: $RUN_URL. $state Push again, or re-run that run, to retry.$link"
           else
             scripts/preview-comment.sh "$PR" "$SLOT" \
               "The preview couldn't be removed: $RUN_URL. The sweep every 6 hours tries again."

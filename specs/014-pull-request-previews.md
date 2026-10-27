@@ -20,7 +20,7 @@ One bot comment per pull request, edited in place, never a new comment per push:
 - **Deploying:** "Deploying a preview of `abc1234`…", once the images are built.
 - **Ready:** "Preview of `abc1234`: https://verdict-preview-1.alyasi.tech". It reports the version the preview's `/api/health` returns, so a stale link can't pass for a fresh one.
 - **Waiting:** "Both preview slots are in use (#12, #14). Remove the `preview` label from one or close it, then add the label here again."
-- **Failed:** "The preview of `abc1234` didn't build" or "didn't deploy", with a link to the run. A failed update leaves the previous version of the preview running.
+- **Failed:** "The preview of `abc1234` didn't build", or "didn't fully deploy", with a link to the run and the preview. The parts boot one at a time, so it says how far the deploy got: nothing changed, only some parts are on the new version, or everything is but the final check failed.
 - **Not deployed:** a commit someone other than the owner pushed: "`abc1234` wasn't deployed because someone other than the repository owner pushed it. Push again, or re-run its preview-request run, to deploy it."
 - **Removed:** "Preview removed" and why (label removed, closed or merged).
 
@@ -50,7 +50,7 @@ None changes. AI features behave as in staging, within the preview cap.
 - [ ] With both slots in use, labelling a third pull request deploys nothing and the comment names the pull requests holding the slots.
 - [ ] A pull request from a fork, or a commit pushed by someone other than the owner, never reaches the server (proved once with a test branch pushed by another account or app).
 - [ ] The deploying workflow runs from `main` only; changing the preview workflows in a pull request doesn't change how that pull request is deployed.
-- [ ] A failed update leaves the previous preview running and says so in the comment.
+- [ ] A failed update says in the comment how far it got (nothing changed, some parts updated, or all updated with the final check failing), and keeps the preview's link.
 - [ ] zizmor reports no findings for the new workflows.
 
 ## Test plan
