@@ -14,7 +14,8 @@ fi
 reported=""
 for _ in $(seq 1 30); do
   if body=$(curl -fsS --max-time 5 ${headers[@]+"${headers[@]}"} "$url"); then
-    reported=$(python3 -c 'import json, sys; print(json.loads(sys.argv[1]).get("version") or "")' "$body")
+    # A login page from the access gate isn't JSON; keep waiting rather than stop on it.
+    reported=$(python3 -c 'import json, sys; print(json.loads(sys.argv[1]).get("version") or "")' "$body" 2>/dev/null) || reported=""
     if [ "$reported" = "$version" ]; then echo "OK $url reports $version"; exit 0; fi
   fi
   sleep 10
