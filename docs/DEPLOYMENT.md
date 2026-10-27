@@ -14,11 +14,15 @@ Three environments run the same images with different data and secrets. Changes 
 | Data | Seeded demo course | Seeded demo course and test accounts | Real users; never copied to other environments |
 
 ## How a change reaches production
-1. **A pull request** runs CI: lint, types, tests, security scans, end-to-end tests, and phone and desktop screenshots in English and Arabic. A pull request that changes a Dockerfile, a lockfile or the deploy config also builds both images, without pushing them.
+1. **A pull request** runs CI: lint, types, tests, security scans, end-to-end tests, and phone and desktop screenshots in English and Arabic. A pull request that changes a Dockerfile, a lockfile or the deploy config also builds both images, without pushing them, and one that changes the Kamal config checks it with `kamal config`.
 2. **Merging to `main`:**
    - Once `ci-ok` is green, CI builds the `web` and `api` images and tags them `sha-<commit>`.
    - It signs their build provenance and pushes them to GitHub Container Registry.
-   - It deploys them to staging with Kamal, the API first, so migrations run before the web app relies on them.
+   - It deploys them to staging with Kamal, over SSH on the private network that the private hosting runbook describes:
+     - the database and the tunnel start on the first deploy and keep running after it;
+     - the api deploys first and migrates, so the web app never relies on a migration that hasn't run;
+     - the old workers stop before the new ones start, since two workers with the same executor ID could both resume a workflow;
+     - then the web app deploys.
    - A smoke test checks the health endpoint.
 3. **Publishing a GitHub Release** (for example `v0.4.0`) once staging looks good:
    - The production job waits for the maintainer's approval in the `production` environment.
@@ -33,42 +37,74 @@ gh attestation verify oci://ghcr.io/rayanalyasi/verdict/api:v0.4.0 -R RayanAlyas
 
 ## Images
 - **`apps/web/Dockerfile`:** Next.js's standalone server on Node 26, run as the non-root `node` user. `pnpm --dir apps/web start` runs the same server locally after a build.
-- **`services/api/Dockerfile`:** Python 3.14 with the locked dependencies, run as a non-root user. By default it runs `alembic upgrade head`, then starts uvicorn; each worker role runs `python -m verdict.worker <queue>` instead.
+- **`services/api/Dockerfile`:** Python 3.14 with the locked dependencies, run as a non-root user. By default it migrates the database with `python -m verdict.migrate`, then starts uvicorn; each worker role runs `python -m verdict.worker <queue>` instead.
 - **Both:** built from the repository root for arm64, with base images pinned by digest (Dependabot proposes updates after the same 7-day wait as other dependencies; for an urgent operating-system fix, update the digest by hand), current root certificates and the `org.opencontainers.image.licenses` label.
-- **Storage:** the api writes uploads to `/app/storage`. Mount a named volume there; a host folder must belong to uid 1000.
+- **Deploys** also label each image `service=verdict-api` or `service=verdict-web`, which Kamal checks before it runs one.
+- **Storage:** the api writes uploads to `/app/storage`. Deployed, that's the server folder `/var/lib/verdict/<environment>/storage`, owned by uid 1000 (the api's user), which Kamal mounts into the api and every worker.
 
 Build and run one locally with `docker build -f services/api/Dockerfile --build-arg APP_COMMIT=$(git rev-parse HEAD) -t verdict-api .`.
 
 ## Rollback
-Run the **deploy** workflow by hand from `main` with `rollback_to` set to the version to restore, for example `v0.3.2`. After approval, it runs `kamal rollback` for both services. Migrations are backward compatible, so rolling back code is safe.
+Run the **deploy** workflow by hand from `main` with `rollback_to` set to the version to restore, for example `v0.3.2`. After approval, it stops the workers, then runs `kamal rollback` for the api and its workers, then for the web app. Kamal keeps the containers of the last three versions, so it can go back that far.
+
+Migrations are backward compatible, so rolling back code is safe. The older api starts against a database that a newer one migrated, and leaves it as it is.
 
 ## Database migrations
-Alembic migrations run before the new API containers accept traffic. They follow expand and contract:
+The api migrates (`python -m verdict.migrate`) before it answers its health check, so a new version takes traffic only after its migrations have run. kamal-proxy waits 3 minutes for that (`deploy_timeout` in `config/deploy.api.yml`); raise it before a migration that takes longer. Migrations follow expand and contract:
 - **Never drop or rename a column** in the same release that stops using it; remove it in a later release.
 - **Add new columns** as nullable or with defaults.
+
+## The deployed database
+Each environment's Postgres runs on the server as a Kamal accessory (`config/deploy.api.yml`), with its data in `/var/lib/verdict/<environment>/postgres`. When that folder is empty, Postgres creates the database and runs `config/db/`: the api and web roles, then their passwords from `VERDICT_API_DB_PASSWORD` and `VERDICT_WEB_DB_PASSWORD`. The apps never connect as the superuser.
+
+These steps run on the server, as the private hosting runbook describes; `<environment>` is `staging` or `production`.
+- **A first start that stopped halfway:**
+  - If the database exists but a role script failed, run both scripts again. They're safe to repeat.
+
+    ```bash
+    docker exec verdict-<environment>-db psql -v ON_ERROR_STOP=1 -U verdict -d verdict -f /docker-entrypoint-initdb.d/10-roles.sql
+    docker exec verdict-<environment>-db bash /docker-entrypoint-initdb.d/20-role-passwords.sh
+    ```
+  - If Postgres itself never finished creating the database, nothing is stored yet. Remove the container (`docker rm -f verdict-<environment>-db`), empty the data folder, and deploy again.
+- **Rotating a role's password** (the apps keep their own roles throughout):
+  1. Make a new one with `openssl rand -hex 32`.
+  2. Set it on the role. psql asks for it twice and sends only a hash, so it never appears in a log or a process list:
+
+     ```bash
+     docker exec -it verdict-<environment>-db psql -U verdict -d verdict -c '\password verdict_api'
+     ```
+  3. Put the same value in the environment's `VERDICT_API_DB_PASSWORD` secret (or `VERDICT_WEB_DB_PASSWORD` for `verdict_web`).
+  4. Run the environment's last deploy again. Until it finishes, connections the api already holds keep working, but new ones fail.
+
+## Running Kamal by hand
+Deploys run in CI. For logs or a one-off look, a maintainer on the private network can run Kamal from a checkout: run `bundle install`, export `KAMAL_HOST`, point SSH at the deploy key as `deploy.yml` does, then for example run `bundle exec kamal app logs -c config/deploy.api.yml -d staging -r worker-ingestion`. Commands that deploy or boot need every secret in `.kamal/secrets-common`, so leave those to CI.
 
 ## Backups
 Production's database is archived continuously, so it can be restored to any minute in the last 30 days. Backups are encrypted and stored with a different provider, and an automated restore proves them every month.
 
 ## Secrets and variables
 - **Development:** `.env`, which git ignores. [`.env.example`](../.env.example) documents the names.
-- **Staging and production:** GitHub environment secrets, passed to Kamal through `.kamal/secrets` at deploy time. Only the jobs that declare an environment can read its values.
+- **Staging and production:** GitHub environment secrets and variables, passed to Kamal through `.kamal/secrets-common` at deploy time. Only the jobs that declare an environment can read its values.
 
-Never put secrets in code, logs, issues or screenshots. `deploy.yml` passes the app secrets to Kamal; keep its list and `.kamal/secrets` in sync with this table.
+Never put secrets in code, logs, issues or screenshots. `deploy.yml` passes the app secrets to Kamal; keep its list and `.kamal/secrets-common` in sync with this table.
 
 | Name | Kind | Environments | Purpose |
 | --- | --- | --- | --- |
 | `APP_URL` | variable | staging, production | Base URL for the deployment link and the smoke test |
-| `KAMAL_SSH_PRIVATE_KEY`, `KAMAL_SSH_KNOWN_HOSTS` | secret | staging, production | Deploys over SSH, with the servers' host keys pinned |
-| `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET` | secret | staging, production | Service token for SSH through the tunnel, and for the smoke test past the access gate |
-| `CLOUDFLARE_TUNNEL_TOKEN` | secret | staging, production | The tunnel that carries all traffic, so the servers have no open ports |
-| `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | secret | staging, production | Sign-in |
-| `DATABASE_URL`, `AUTH_DATABASE_URL` | secret | staging, production | Database roles for the API and for the web app's `auth` schema |
-| `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` | secret | staging, production, evals, evals-pr | AI providers. The eval environments get their own keys, with a low spend limit set at the provider |
-| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | secret | staging, production | File storage in a bucket, from spec 001; unused until then |
-| `SENTRY_DSN` | secret | staging, production | Error reporting |
+| `KAMAL_HOST` | secret | staging, production | The server's address on the private network, kept out of the repository |
+| `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE` | secret | staging, production | The federated identity that lets this environment's deploy job join the private network. GitHub's token proves the job, so no long-lived key is stored |
+| `KAMAL_SSH_PRIVATE_KEY`, `KAMAL_SSH_KNOWN_HOSTS` | secret | staging, production | SSH as the deploy user, whose key works only from the private network, with the server's host key pinned |
+| `CLOUDFLARE_TUNNEL_TOKEN` | secret | staging, production | The environment's tunnel, which Kamal runs and which carries its web traffic, so the server has no open web ports |
+| `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET` | secret | staging | Service token for the smoke test past staging's access gate |
+| `BETTER_AUTH_SECRET` | secret | staging, production | Signs sign-in sessions (`openssl rand -base64 32`) |
+| `POSTGRES_PASSWORD`, `VERDICT_API_DB_PASSWORD`, `VERDICT_WEB_DB_PASSWORD` | secret | staging, production | The database superuser's and the api and web roles' passwords (`openssl rand -hex 32`). `.kamal/secrets-common` builds the api's `DATABASE_URL` from them |
+| `ANTHROPIC_API_KEY` | secret | staging, production, evals, evals-pr | The platform's AI key. The eval environments get their own keys, with a low spend limit set at the provider |
+| `AI_DAILY_SPEND_LIMIT_USD` | variable | staging, production | The platform's daily AI spend cap in that environment |
+| `OPENAI_API_KEY` | secret | evals, evals-pr | A second AI provider for the eval runs |
 | `EVALS_REPO` (variable), `EVALS_REPO_TOKEN` (secret) | both | evals, evals-pr | The private evaluation set, with a read-only token |
 | `EVALS_SPEND_LIMIT_USD` | variable | evals, evals-pr | Cost cap for one eval run |
+
+Later specs add Google sign-in (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `AUTH_DATABASE_URL` for the web role), a bucket for files (`S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`) and error reporting (`SENTRY_DSN`). Each joins `deploy.yml`, `.kamal/secrets-common`, its Kamal config and this table when its code does.
 
 `evals` accepts only `main`, for nightly and on-demand runs. Pull request evals use `evals-pr`, which waits for the maintainer's approval ([ADR 0013](adr/0013-ai-review-coderabbit.md)).
 

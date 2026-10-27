@@ -1,0 +1,48 @@
+# The web app (ADR 0011). Deploy it after the api (deploy.api.yml). Each destination file
+# (deploy.web.staging.yml, deploy.web.production.yml) adds what differs per environment.
+service: verdict-web
+image: rayanalyasi/verdict/web
+require_destination: true
+
+registry:
+  server: ghcr.io
+  username:
+    - KAMAL_REGISTRY_USERNAME
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+# CI builds and pushes the images (deploy.yml); Kamal only pulls them.
+builder:
+  arch: arm64
+
+ssh:
+  user: kamal
+  forward_agent: false
+
+servers:
+  web:
+    hosts:
+      - <%= ENV.fetch("KAMAL_HOST") %>
+    options:
+      memory: 512m
+
+proxy:
+  app_port: 3000
+  # A page, not /api/health: that also checks the api, which shouldn't block a web deploy.
+  healthcheck:
+    path: /en
+
+deploy_timeout: 60
+retain_containers: 3
+
+# Keeps the previous build's hashed files, so a page opened before a deploy can still load code it
+# fetches later.
+asset_path: /app/apps/web/.next/static
+
+env:
+  clear:
+    API_URL: http://verdict-api-<%= ENV["KAMAL_DESTINATION"] %>:8000
+    # The version being deployed, which GET /api/health reports; deploy.yml sets it.
+    APP_VERSION: "<%= ENV["APP_VERSION"] %>"
+  secret:
+    - BETTER_AUTH_SECRET

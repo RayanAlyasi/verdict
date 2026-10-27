@@ -19,7 +19,7 @@ __pycache__/
 htmlcov/
 *.egg-info/
 
-# Secrets: never commit. .env.example holds names only; .kamal/secrets holds references, not values.
+# Secrets: never commit. .env.example holds names only; .kamal/secrets-common holds references, not values.
 .env
 .env.*
 !.env.example

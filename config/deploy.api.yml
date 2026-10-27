@@ -1,0 +1,102 @@
+# The api, one worker per queue and the database (ADR 0011). Deploy it before the web app, so
+# migrations run before the web relies on them. Each destination file (deploy.api.staging.yml,
+# deploy.api.production.yml) adds what differs per environment; docs/DEPLOYMENT.md has the flow.
+service: verdict-api
+image: rayanalyasi/verdict/api
+primary_role: api
+require_destination: true
+
+registry:
+  server: ghcr.io
+  username:
+    - KAMAL_REGISTRY_USERNAME
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+# CI builds and pushes the images (deploy.yml); Kamal only pulls them.
+builder:
+  arch: arm64
+
+ssh:
+  user: kamal
+  forward_agent: false
+
+servers:
+  api:
+    hosts:
+      - <%= ENV.fetch("KAMAL_HOST") %>
+    options:
+      memory: 768m
+      # The web app's API_URL: a stable name for whichever api container is running.
+      network-alias: verdict-api-<%= ENV["KAMAL_DESTINATION"] %>
+  worker-ingestion: &worker
+    hosts:
+      - <%= ENV.fetch("KAMAL_HOST") %>
+    cmd: python -m verdict.worker ingestion
+    # A stopped worker finishes running workflows within 20 seconds (verdict/worker.py).
+    stop_timeout: 30
+    options:
+      memory: 512m
+  worker-generation:
+    <<: *worker
+    cmd: python -m verdict.worker generation
+  worker-verification:
+    <<: *worker
+    cmd: python -m verdict.worker verification
+  worker-media:
+    <<: *worker
+    cmd: python -m verdict.worker media
+  worker-maintenance:
+    <<: *worker
+    cmd: python -m verdict.worker maintenance
+
+proxy:
+  app_port: 8000
+  # The browser calls the api on the web app's domain; only /api/v1 reaches it, unchanged.
+  path_prefix: /api/v1
+  strip_path_prefix: false
+  healthcheck:
+    path: /health
+
+# The api migrates before it answers its health check, so this bounds the slowest migration.
+deploy_timeout: 180
+retain_containers: 3
+
+# Uploaded and generated files, until spec 001 moves them to a bucket. The folder must belong to
+# uid 1000, the api's user in its image.
+volumes:
+  - /var/lib/verdict/<%= ENV["KAMAL_DESTINATION"] %>/storage:/app/storage
+
+env:
+  clear:
+    STORAGE_LOCAL_PATH: /app/storage
+  secret:
+    - DATABASE_URL
+    - ANTHROPIC_API_KEY
+    - AI_DAILY_SPEND_LIMIT_USD
+
+accessories:
+  db:
+    # Kamal doesn't add the destination to accessory names, so the name carries it.
+    service: verdict-<%= ENV["KAMAL_DESTINATION"] %>-db
+    # Not updated by deploys: `kamal accessory reboot db` picks up a new image.
+    image: pgvector/pgvector:0.8.7-pg18-trixie
+    host: <%= ENV.fetch("KAMAL_HOST") %>
+    env:
+      clear:
+        POSTGRES_USER: verdict
+        POSTGRES_DB: verdict
+      secret:
+        - POSTGRES_PASSWORD
+        - VERDICT_API_DB_PASSWORD
+        - VERDICT_WEB_DB_PASSWORD
+    # The api and web roles, created when the data folder is new (docs/DEPLOYMENT.md).
+    files:
+      - config/db/10-roles.sql:/docker-entrypoint-initdb.d/10-roles.sql:ro
+      - config/db/20-role-passwords.sh:/docker-entrypoint-initdb.d/20-role-passwords.sh:ro
+    # A host folder, not a named volume, so a Docker volume prune can't delete it.
+    volumes:
+      - /var/lib/verdict/<%= ENV["KAMAL_DESTINATION"] %>/postgres:/var/lib/postgresql
+    options:
+      memory: 1g
+      shm-size: 256m

@@ -25,6 +25,7 @@ jobs:
       scripts: ${{ steps.c.outputs.scripts }}
       deployable: ${{ steps.c.outputs.deployable }}
       images: ${{ steps.c.outputs.images }}
+      kamal: ${{ steps.c.outputs.kamal }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -55,7 +56,10 @@ jobs:
           # What a broken image would otherwise first show as a failed staging deploy.
           images=false; [ "$(touches "(Dockerfile$|^\.dockerignore$|^package\.json$|^apps/web/(package\.json|next\.config\.ts)$|^pnpm-(lock|workspace)\.yaml$|^services/api/(pyproject\.toml|uv\.lock|\.python-version)$|^config/deploy|^\.github/workflows/(ci|deploy)\.yml$)")" = true ] && images=true
 
-          { echo "web=$web"; echo "api=$api"; echo "full=$full"; echo "ai=$ai"; echo "scripts=$scripts"; echo "deployable=$deployable"; echo "images=$images"; } | tee -a "$GITHUB_OUTPUT"
+          # A Kamal config error would otherwise first show as a failed staging deploy, too.
+          kamal=false; [ -e Gemfile.lock ] && [ "$(touches '(^Gemfile|^\.kamal/|^config/deploy|^\.github/workflows/(ci|deploy)\.yml$)')" = true ] && kamal=true
+
+          { echo "web=$web"; echo "api=$api"; echo "full=$full"; echo "ai=$ai"; echo "scripts=$scripts"; echo "deployable=$deployable"; echo "images=$images"; echo "kamal=$kamal"; } | tee -a "$GITHUB_OUTPUT"
 
   web:
     name: web
@@ -342,10 +346,42 @@ jobs:
           docker logs worker
           exit 1
 
+  kamal:
+    name: kamal
+    needs: changes
+    if: needs.changes.outputs.kamal == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@26e5b7d197ebf60545ee9667bcbace0be11ccaec # v1.334.0
+        with:
+          ruby-version: "3.4"
+      - name: Install Kamal from Gemfile.lock (each gem's checksum is verified)
+        env:
+          BUNDLE_FROZEN: "true"
+        run: bundle install
+      # Kamal rejects unknown keys and wrong types. Placeholders stand in for the server and secrets.
+      - name: Check every service's config for both destinations
+        env:
+          KAMAL_HOST: 192.0.2.1
+        run: |
+          set -euo pipefail
+          for service in api web; do
+            for destination in staging production; do
+              bundle exec kamal config -c "config/deploy.$service.yml" -d "$destination" > /dev/null
+              echo "config/deploy.$service.yml -d $destination: OK"
+            done
+          done
+
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [changes, web, api, contract, e2e, images, zizmor, scripts, dependency-review, evals]
+    needs: [changes, web, api, contract, e2e, images, kamal, zizmor, scripts, dependency-review, evals]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     permissions: {}

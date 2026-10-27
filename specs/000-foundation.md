@@ -82,7 +82,7 @@ When this ships, a contributor can clone the repo, run one command and see the V
 - **Health endpoints:** `GET /api/health` on the web reports web, api, database and storage status. The api has `GET /health`.
 - **Dockerfiles,** both built for the server's architecture:
   - `apps/web/Dockerfile`: multi-stage, standalone output, non-root user.
-  - `services/api/Dockerfile`: uv, non-root. It runs `alembic upgrade head`, then starts uvicorn, and has a worker command.
+  - `services/api/Dockerfile`: uv, non-root. It migrates the database (`python -m verdict.migrate`), then starts uvicorn, and has a worker command.
 - **Local services:** `docker compose up -d` provides Postgres 18 with pgvector locally, and `pnpm dev` runs web and api together.
 - **No fallback secrets:**
   - `BETTER_AUTH_SECRET`, and any secret a later spec adds, has no default value in code.

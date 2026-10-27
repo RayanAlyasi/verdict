@@ -65,6 +65,8 @@ jobs:
           tags: ${{ steps.name.outputs.image }}:sha-${{ github.sha }}
           # Baked in, because production runs this same image and reports which commit it is.
           build-args: APP_COMMIT=${{ github.sha }}
+          # Kamal refuses to run an image without its service's label (config/deploy.*.yml).
+          labels: service=verdict-${{ matrix.image }}
       - name: Sign build provenance (verify with `gh attestation verify oci://<image> -R <repo>`)
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
@@ -84,6 +86,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write # proves to Tailscale that this job runs in this environment
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -125,20 +128,23 @@ jobs:
       - uses: ruby/setup-ruby@26e5b7d197ebf60545ee9667bcbace0be11ccaec # v1.334.0
         with:
           ruby-version: "3.4"
-      - name: Install Kamal and cloudflared
+      - name: Install Kamal from Gemfile.lock (each gem's checksum is verified)
         env:
-          KAMAL_VERSION: 2.12.0
-          CLOUDFLARED_VERSION: 2026.10.3
-          CLOUDFLARED_SHA256: 297d906a8fef396ec888b51571e783d594bde280f3b44d63e8fa343ef2c4cc4e
-        # Kamal's version is pinned; spec 000 moves it to a hash-checked Gemfile.lock. cloudflared is checksum-verified.
-        run: | # zizmor: ignore[adhoc-packages]
-          set -euo pipefail
-          gem install kamal --version "$KAMAL_VERSION" --no-document
-          curl -fsSLo cloudflared.deb "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64.deb"
-          echo "${CLOUDFLARED_SHA256}  cloudflared.deb" | sha256sum --check
-          sudo dpkg -i cloudflared.deb
-      - name: Configure SSH through the Cloudflare Tunnel (no open ports on the servers)
+          BUNDLE_FROZEN: "true"
+        run: bundle install
+      # Only deploy.yml in this environment can join (the private hosting runbook), and its tag
+      # reaches nothing but the server's SSH port. The tunnel carries web traffic only.
+      - name: Join the private network
+        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4.2.0
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:verdict-deploy
+          ping: ${{ secrets.KAMAL_HOST }}
+          use-cache: "false"
+      - name: Configure SSH for the deploy user, with the server's host key pinned
         env:
+          KAMAL_HOST: ${{ secrets.KAMAL_HOST }}
           SSH_PRIVATE_KEY: ${{ secrets.KAMAL_SSH_PRIVATE_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.KAMAL_SSH_KNOWN_HOSTS }}
         run: |
@@ -146,38 +152,43 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          printf '%s\n' 'Host *' '  IdentityFile ~/.ssh/id_ed25519' '  ProxyCommand cloudflared access ssh --hostname %h' > ~/.ssh/config
+          printf '%s\n' "Host $KAMAL_HOST" '  IdentityFile ~/.ssh/id_ed25519' '  IdentitiesOnly yes' \
+            '  StrictHostKeyChecking yes' > ~/.ssh/config
       - name: Deploy with Kamal (api first, so migrations run before the web app relies on them)
         env:
           DEST: ${{ steps.plan.outputs.dest }}
           VERSION: ${{ steps.plan.outputs.version }}
           MODE: ${{ steps.plan.outputs.mode }}
+          KAMAL_HOST: ${{ secrets.KAMAL_HOST }}
+          APP_VERSION: ${{ steps.plan.outputs.version }}
+          KAMAL_REGISTRY_USERNAME: ${{ github.actor }}
           KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-          TUNNEL_SERVICE_TOKEN_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-          TUNNEL_SERVICE_TOKEN_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-          # App secrets, read by .kamal/secrets. Keep this list in sync with docs/DEPLOYMENT.md.
+          # Read by .kamal/secrets-common. Keep this list in sync with it and docs/DEPLOYMENT.md.
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          AUTH_DATABASE_URL: ${{ secrets.AUTH_DATABASE_URL }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
-          S3_BUCKET: ${{ secrets.S3_BUCKET }}
-          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
-          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          AI_DAILY_SPEND_LIMIT_USD: ${{ vars.AI_DAILY_SPEND_LIMIT_USD }}
           CLOUDFLARE_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          VERDICT_API_DB_PASSWORD: ${{ secrets.VERDICT_API_DB_PASSWORD }}
+          VERDICT_WEB_DB_PASSWORD: ${{ secrets.VERDICT_WEB_DB_PASSWORD }}
         run: |
           set -euo pipefail
-          for service in api web; do
-            if [ "$MODE" = "rollback" ]; then
-              kamal rollback "$VERSION" -c "config/deploy.$service.yml" -d "$DEST"
-            else
-              kamal deploy -c "config/deploy.$service.yml" -d "$DEST" --skip-push --version "$VERSION"
-            fi
-          done
+          api=(-c config/deploy.api.yml -d "$DEST")
+          web=(-c config/deploy.web.yml -d "$DEST")
+          # The database and tunnel: created by the first deploy, left running after that.
+          bundle exec kamal accessory boot all "${api[@]}"
+          # Old workers stop before new ones start: two with the same executor ID could both resume
+          # a workflow. A failed api deploy leaves them running.
+          if [ "$MODE" = "rollback" ]; then
+            bundle exec kamal app stop "${api[@]}" --roles 'worker-*'
+            bundle exec kamal rollback "$VERSION" "${api[@]}"
+            bundle exec kamal rollback "$VERSION" "${web[@]}"
+          else
+            bundle exec kamal deploy "${api[@]}" --skip-push --version "$VERSION" --roles api
+            bundle exec kamal app stop "${api[@]}" --roles 'worker-*'
+            bundle exec kamal app boot "${api[@]}" --version "$VERSION" --roles 'worker-*'
+            bundle exec kamal deploy "${web[@]}" --skip-push --version "$VERSION"
+          fi
       - name: Smoke test
         env:
           APP_URL: ${{ vars.APP_URL }}

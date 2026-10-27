@@ -1,7 +1,8 @@
 # The api: Python 3.14 with the locked dependencies, run as a non-root user. Build it from the
 # repository root:
 #   docker build -f services/api/Dockerfile --build-arg APP_COMMIT=$(git rev-parse HEAD) .
-# By default it migrates the database, then serves; a worker runs `python -m verdict.worker <queue>`.
+# By default it migrates the database (python -m verdict.migrate), then serves; a worker runs
+# `python -m verdict.worker <queue>`.
 
 # Named in FROM lines, not ARGs, so Dependabot can see them and propose updates.
 FROM ghcr.io/astral-sh/uv:0.13.5@sha256:32a7bb39b496babbd997b0a39a4d66c126bdaf5661b302bf6f06abda8deca6ff AS uv
@@ -41,4 +42,4 @@ RUN mkdir storage && chown verdict:verdict storage
 USER verdict
 EXPOSE 8000
 ENTRYPOINT ["tini", "-g", "--"]
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn verdict.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "python -m verdict.migrate && exec uvicorn verdict.main:app --host 0.0.0.0 --port 8000"]
