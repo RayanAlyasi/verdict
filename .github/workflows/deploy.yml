@@ -9,6 +9,34 @@ on:
         description: "Environment to deploy (staging)"
         type: string
         required: true
+    # Required, so a caller that forgets one fails instead of deploying with an empty value.
+    secrets:
+      KAMAL_HOST:
+        required: true
+      TS_OAUTH_CLIENT_ID:
+        required: true
+      TS_AUDIENCE:
+        required: true
+      KAMAL_SSH_PRIVATE_KEY:
+        required: true
+      KAMAL_SSH_KNOWN_HOSTS:
+        required: true
+      BETTER_AUTH_SECRET:
+        required: true
+      ANTHROPIC_API_KEY:
+        required: true
+      CLOUDFLARE_TUNNEL_TOKEN:
+        required: true
+      POSTGRES_PASSWORD:
+        required: true
+      VERDICT_API_DB_PASSWORD:
+        required: true
+      VERDICT_WEB_DB_PASSWORD:
+        required: true
+      CF_ACCESS_CLIENT_ID:
+        required: true
+      CF_ACCESS_CLIENT_SECRET:
+        required: true
   release:
     types: [published]
   workflow_dispatch:
