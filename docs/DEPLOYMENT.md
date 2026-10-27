@@ -44,6 +44,16 @@ gh attestation verify oci://ghcr.io/rayanalyasi/verdict/api:v0.4.0 -R RayanAlyas
 
 Build and run one locally with `docker build -f services/api/Dockerfile --build-arg APP_COMMIT=$(git rev-parse HEAD) -t verdict-api .`.
 
+## Pull request previews
+Adding the `preview` label to a pull request from a branch in this repository deploys it to one of two slots, `verdict-preview-1.alyasi.tech` and `verdict-preview-2.alyasi.tech`, behind the same access gate as staging ([spec 014](../specs/014-pull-request-previews.md)). A bot comment links to it.
+- **Two workflows:**
+  - `preview-build.yml` builds the pull request's images with no secrets and uploads them as artifacts.
+  - `preview.yml` runs from `main` (`workflow_run`), so a pull request can't change it. It reads the pull request through the API and deploys only a labelled, current commit that the repository owner pushed or labelled. It loads only an image with the tag it expects.
+- **Each preview** is the api, the workers and the web app, with a database and storage on Docker volumes of its own. Data survives the pull request's pushes; a pull request taking a slot starts empty.
+- **Slots:** the server records which pull request holds each slot in `~/.verdict-previews/<slot>`, claimed atomically. With both taken, the comment names the pull requests holding them.
+- **Removal:** closing or merging the pull request, or removing the label, removes the preview and frees its slot (`scripts/preview-remove.sh`).
+- **The `preview` environment** accepts only `main`. Its secrets are its own, apart from staging's AI key, which previews share with a smaller daily cap.
+
 ## Rollback
 Run the **deploy** workflow by hand from `main` with `rollback_to` set to the version to restore, for example `v0.3.2`. After approval, it deploys that release's images again, the same way as any deploy, and the smoke test confirms the version. It doesn't use `kamal rollback`, which needs the old containers, and Kamal's pruning may already have removed them.
 
@@ -101,15 +111,15 @@ Never put secrets in code, logs, issues or screenshots. `deploy.yml` passes the 
 | Name | Kind | Environments | Purpose |
 | --- | --- | --- | --- |
 | `APP_URL` | variable | staging, production | Base URL for the deployment link and the smoke test |
-| `KAMAL_HOST` | secret | staging, production | The server's address on the private network, kept out of the repository |
-| `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE` | secret | staging, production | The federated identity that lets this environment's deploy job join the private network. GitHub's token proves the job, so no long-lived key is stored |
-| `KAMAL_SSH_PRIVATE_KEY`, `KAMAL_SSH_KNOWN_HOSTS` | secret | staging, production | SSH as the deploy user, whose key works only from the private network, with the server's host key pinned |
+| `KAMAL_HOST` | secret | staging, production, preview | The server's address on the private network, kept out of the repository |
+| `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE` | secret | staging, production, preview | The federated identity that lets this environment's deploy job (`preview.yml` for preview) join the private network. GitHub's token proves the job, so no long-lived key is stored |
+| `KAMAL_SSH_PRIVATE_KEY`, `KAMAL_SSH_KNOWN_HOSTS` | secret | staging, production, preview | SSH as the deploy user, whose key works only from the private network, with the server's host key pinned. Previews have a key of their own, so it can be revoked alone |
 | `CLOUDFLARE_TUNNEL_TOKEN` | secret | staging, production | The environment's tunnel, which Kamal runs and which carries its web traffic, so the server has no open web ports |
-| `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET` | secret | staging | Service token for the smoke test past staging's access gate |
-| `BETTER_AUTH_SECRET` | secret | staging, production | Signs sign-in sessions (`openssl rand -base64 32`) |
-| `POSTGRES_PASSWORD`, `VERDICT_API_DB_PASSWORD`, `VERDICT_WEB_DB_PASSWORD` | secret | staging, production | The database superuser's and the api and web roles' passwords (`openssl rand -hex 32`). `.kamal/secrets-common` builds the api's `DATABASE_URL` from them |
-| `ANTHROPIC_API_KEY` | secret | staging, production, evals, evals-pr | The platform's AI key. The eval environments get their own keys, with a low spend limit set at the provider |
-| `AI_DAILY_SPEND_LIMIT_USD` | variable | staging, production | The platform's daily AI spend cap in that environment |
+| `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET` | secret | staging, preview | Service token for the smoke test past the access gate (each environment has its own) |
+| `BETTER_AUTH_SECRET` | secret | staging, production, preview | Signs sign-in sessions (`openssl rand -base64 32`) |
+| `POSTGRES_PASSWORD`, `VERDICT_API_DB_PASSWORD`, `VERDICT_WEB_DB_PASSWORD` | secret | staging, production, preview | The database superuser's and the api and web roles' passwords (`openssl rand -hex 32`). `.kamal/secrets-common` builds the api's `DATABASE_URL` from them |
+| `ANTHROPIC_API_KEY` | secret | staging, production, preview, evals, evals-pr | The platform's AI key. Previews share staging's; the eval environments get their own, with a low spend limit set at the provider |
+| `AI_DAILY_SPEND_LIMIT_USD` | variable | staging, production, preview | The platform's daily AI spend cap in that environment; for preview, per slot |
 | `OPENAI_API_KEY` | secret | evals, evals-pr | A second AI provider for the eval runs |
 | `EVALS_REPO` (variable), `EVALS_REPO_TOKEN` (secret) | both | evals, evals-pr | The private evaluation set, with a read-only token |
 | `EVALS_SPEND_LIMIT_USD` | variable | evals, evals-pr | Cost cap for one eval run |

@@ -69,6 +69,8 @@ proxy:
       network-alias:
         - verdict-api-staging
         - verdict-api-production
+        - verdict-api-preview-1
+        - verdict-api-preview-2
 
 # The api migrates before it answers its health check, so this bounds the slowest migration.
 deploy_timeout: 180

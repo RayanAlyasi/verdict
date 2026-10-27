@@ -372,7 +372,7 @@ jobs:
         run: |
           set -euo pipefail
           for service in api web; do
-            for destination in staging production; do
+            for destination in staging production preview-1 preview-2; do
               bundle exec kamal config -c "config/deploy.$service.yml" -d "$destination" > /dev/null
               echo "config/deploy.$service.yml -d $destination: OK"
             done

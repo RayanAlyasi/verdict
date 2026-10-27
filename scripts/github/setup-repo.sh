@@ -110,6 +110,10 @@ step "environment: evals" gh api -X PUT "repos/$REPO/environments/evals" --input
 {"deployment_branch_policy": {"protected_branches": false, "custom_branch_policies": true}}
 JSON
 step "evals runs only from main" policies evals main:branch
+step "environment: preview" gh api -X PUT "repos/$REPO/environments/preview" --input - <<'JSON'
+{"deployment_branch_policy": {"protected_branches": false, "custom_branch_policies": true}}
+JSON
+step "preview deploys only from main (preview.yml runs there)" policies preview main:branch
 step "environment: evals-pr (your approval required)" gh api -X PUT "repos/$REPO/environments/evals-pr" --input - <<JSON
 {"reviewers": [{"type": "User", "id": $ME_ID}], "prevent_self_review": false, "deployment_branch_policy": null}
 JSON
@@ -130,6 +134,7 @@ label "good first issue" 7057FF "Small and well described"
 label "help wanted"      008672 "Open for contributors"
 label "blocked"          B60205 "Waiting on something"
 label "accessibility"    0E8A16 "Keyboard, screen readers, contrast, motion"
+label "preview"          3CC4A2 "Deploy this pull request to a preview slot (specs/014)"
 
 # GitHub's default labels that the scheme above replaces. Closing reasons cover duplicate, invalid and won't fix.
 existing_labels=$(gh label list --repo "$REPO" --limit 200 --json name --jq '.[].name')

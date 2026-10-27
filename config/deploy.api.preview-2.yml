@@ -1,0 +1,24 @@
+# Pull request preview slot 2 (specs/014), behind an access gate and served through staging's
+# tunnel. preview.yml loads the pull request's images onto the server, so nothing is pulled.
+registry:
+  server: localhost:5555
+
+proxy:
+  hosts:
+    - verdict-preview-2.alyasi.tech
+    - verdict-api-preview-2
+
+env:
+  clear:
+    # Staging's behaviour, including /dev/ui; previews hold no real data.
+    APP_ENV: staging
+    DEPLOYMENT_MODE: hosted
+
+# Docker volumes, removed with the preview, instead of the server folders other destinations use.
+volumes:
+  - verdict-preview-2-storage:/app/storage
+
+accessories:
+  db:
+    volumes:
+      - verdict-preview-2-postgres:/var/lib/postgresql

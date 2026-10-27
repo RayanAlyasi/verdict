@@ -1,0 +1,267 @@
+name: preview
+# Deploys or removes a pull request's preview after preview-build finishes (specs/014). workflow_run
+# runs this file from main, so a pull request can't change it. It trusts nothing preview-build says:
+# it reads the pull request from the API, deploys only a labelled, same-repository, current commit
+# that the repository owner triggered, and loads only an image with the tag it expects.
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers]
+    workflows: [preview-build]
+    types: [completed]
+permissions: {}
+# One run per branch at a time, so a pull request's events apply in order. GitHub cancels an older
+# pending run when a newer one queues, which is safe here: each run re-reads the pull request's
+# state. Different pull requests run side by side; claiming a slot is atomic on the server.
+concurrency:
+  group: preview-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    outputs:
+      action: ${{ steps.plan.outputs.action }}
+      pr: ${{ steps.plan.outputs.pr }}
+      sha: ${{ steps.plan.outputs.sha }}
+      slot: ${{ steps.plan.outputs.slot }}
+      reason: ${{ steps.plan.outputs.reason }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: plan
+        name: Decide what this pull request's preview needs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          TRIGGERED_BY: ${{ github.event.workflow_run.triggering_actor.login }}
+        run: |
+          set -euo pipefail
+          out() { echo "$1=$2" >> "$GITHUB_OUTPUT"; }
+          # The pull request GitHub associates with the commit, from this repository only.
+          pr=$(gh api "repos/$REPO/commits/$HEAD_SHA/pulls" \
+            --jq "[.[] | select(.head.repo.full_name == \"$REPO\")][0].number // empty")
+          if [ -z "$pr" ]; then echo "No pull request from this repository for $HEAD_SHA."; out action none; exit 0; fi
+          read -r state merged head labelled < <(gh api "repos/$REPO/pulls/$pr" \
+            --jq '[.state, .merged, .head.sha, ([.labels[].name] | index("preview") != null)] | @tsv')
+          held=$(gh api "repos/$REPO/issues/$pr/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]") | .body | split("\n")[0]' |
+            sed -n 's/^<!-- verdict-preview slot=\([12]\) -->$/\1/p' | head -n 1)
+          out pr "$pr"; out sha "$head"; out slot "$held"
+          short=${head:0:7}
+          if [ "$state" != open ] || [ "$labelled" != true ]; then
+            if [ -z "$held" ]; then out action none; exit 0; fi
+            if [ "$merged" = true ]; then out reason "the pull request was merged"
+            elif [ "$state" != open ]; then out reason "the pull request was closed"
+            else out reason "the preview label was removed"; fi
+            out action remove; exit 0
+          fi
+          # Open and labelled. Only the newest commit counts; a later run handles a newer one.
+          if [ "$head" != "$HEAD_SHA" ]; then echo "Superseded by $head."; out action none; exit 0; fi
+          if [ "$CONCLUSION" = cancelled ]; then out action none; exit 0; fi
+          if [ "$CONCLUSION" != success ]; then
+            REPO="$REPO" scripts/preview-comment.sh "$pr" "$held" "The preview of \`$short\` didn't build: $RUN_URL"
+            out action none; exit 0
+          fi
+          artifacts=$(gh api "repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '[.artifacts[].name] | sort | join(",")')
+          if [ "$artifacts" != "preview-api,preview-web" ]; then echo "Nothing new was built."; out action none; exit 0; fi
+          if [ "$TRIGGERED_BY" != "$OWNER" ]; then
+            REPO="$REPO" scripts/preview-comment.sh "$pr" "$held" \
+              "\`$short\` wasn't deployed because someone other than the repository owner pushed it. Push again, or re-run its preview-build run, to deploy it."
+            out action none; exit 0
+          fi
+          out action deploy
+
+  apply:
+    name: ${{ needs.plan.outputs.action }} pull request ${{ needs.plan.outputs.pr }}
+    needs: plan
+    if: needs.plan.outputs.action == 'deploy' || needs.plan.outputs.action == 'remove'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: preview
+      url: ${{ steps.slot.outputs.url }}
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+      id-token: write # proves to Tailscale that this job runs in the preview environment
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      ACTION: ${{ needs.plan.outputs.action }}
+      PR: ${{ needs.plan.outputs.pr }}
+      SHA: ${{ needs.plan.outputs.sha }}
+      HELD: ${{ needs.plan.outputs.slot }}
+      REASON: ${{ needs.plan.outputs.reason }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # A missing environment secret reads as an empty string, with no error of its own.
+      - name: Check the environment's secrets and variables are set (names only, never values)
+        env:
+          KAMAL_HOST: ${{ secrets.KAMAL_HOST }}
+          TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          TS_AUDIENCE: ${{ secrets.TS_AUDIENCE }}
+          KAMAL_SSH_PRIVATE_KEY: ${{ secrets.KAMAL_SSH_PRIVATE_KEY }}
+          KAMAL_SSH_KNOWN_HOSTS: ${{ secrets.KAMAL_SSH_KNOWN_HOSTS }}
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          VERDICT_API_DB_PASSWORD: ${{ secrets.VERDICT_API_DB_PASSWORD }}
+          VERDICT_WEB_DB_PASSWORD: ${{ secrets.VERDICT_WEB_DB_PASSWORD }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          AI_DAILY_SPEND_LIMIT_USD: ${{ vars.AI_DAILY_SPEND_LIMIT_USD }}
+        run: |
+          set -euo pipefail
+          required=(KAMAL_HOST TS_OAUTH_CLIENT_ID TS_AUDIENCE KAMAL_SSH_PRIVATE_KEY KAMAL_SSH_KNOWN_HOSTS
+            BETTER_AUTH_SECRET ANTHROPIC_API_KEY POSTGRES_PASSWORD VERDICT_API_DB_PASSWORD
+            VERDICT_WEB_DB_PASSWORD CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET AI_DAILY_SPEND_LIMIT_USD)
+          missing=()
+          for name in "${required[@]}"; do [ -n "${!name:-}" ] || missing+=("$name"); done
+          if [ "${#missing[@]}" -gt 0 ]; then echo "::error::Set these in the preview environment: ${missing[*]}"; exit 1; fi
+      - uses: ruby/setup-ruby@26e5b7d197ebf60545ee9667bcbace0be11ccaec # v1.334.0
+        with:
+          ruby-version: "3.4"
+      - name: Install Kamal from Gemfile.lock (each gem's checksum is verified)
+        env:
+          BUNDLE_FROZEN: "true"
+        run: bundle install
+      - name: Join the private network
+        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4.2.0
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:verdict-deploy
+          ping: ${{ secrets.KAMAL_HOST }}
+          use-cache: "false"
+      - name: Configure SSH for the deploy user, with the server's host key pinned
+        env:
+          KAMAL_HOST: ${{ secrets.KAMAL_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.KAMAL_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.KAMAL_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf '%s\n' "Host $KAMAL_HOST" '  User kamal' '  IdentityFile ~/.ssh/id_ed25519' '  IdentitiesOnly yes' \
+            '  StrictHostKeyChecking yes' > ~/.ssh/config
+      # The server records which pull request holds each slot, in ~/.verdict-previews/<slot>. A claim
+      # is created only if absent (noclobber), so two runs can't take the same slot.
+      - id: slot
+        name: Find or claim this pull request's slot
+        env:
+          KAMAL_HOST: ${{ secrets.KAMAL_HOST }}
+        run: |
+          set -euo pipefail
+          [[ $PR =~ ^[0-9]+$ ]] || { echo "::error::Unexpected pull request number"; exit 1; }
+          holders() { ssh "$KAMAL_HOST" 'mkdir -p ~/.verdict-previews; for s in 1 2; do echo "$s $(cat ~/.verdict-previews/$s 2>/dev/null)"; done'; }
+          claim() { ssh "$KAMAL_HOST" "set -o noclobber; echo $PR > ~/.verdict-previews/$1" 2>/dev/null; }
+          mine=""; fresh=false; busy=""
+          for _ in 1 2; do
+            free=""; busy=""
+            while read -r s holder; do
+              [ "$holder" = "$PR" ] && mine=$s
+              [ -z "$holder" ] && [ -z "$free" ] && free=$s
+              [ -n "$holder" ] && [ "$holder" != "$PR" ] && busy="$busy #$holder"
+            done < <(holders)
+            if [ -n "$mine" ] || [ "$ACTION" = remove ] || [ -z "$free" ]; then break; fi
+            if claim "$free"; then mine=$free; fresh=true; break; fi
+          done
+          { echo "slot=$mine"; echo "fresh=$fresh"; echo "busy=${busy# }"; } >> "$GITHUB_OUTPUT"
+          if [ -n "$mine" ] && [ "$ACTION" = deploy ]; then
+            echo "url=https://verdict-preview-$mine.alyasi.tech" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Say both slots are in use
+        if: env.ACTION == 'deploy' && steps.slot.outputs.slot == ''
+        env:
+          BUSY: ${{ steps.slot.outputs.busy }}
+        run: |
+          scripts/preview-comment.sh "$PR" "" \
+            "Both preview slots are in use ($BUSY). Remove the \`preview\` label from one of those pull requests or close it, then add the label here again."
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: env.ACTION == 'deploy' && steps.slot.outputs.slot != ''
+        with:
+          pattern: preview-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/images
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+      - name: Deploy the preview
+        if: env.ACTION == 'deploy' && steps.slot.outputs.slot != ''
+        env:
+          SLOT: ${{ steps.slot.outputs.slot }}
+          FRESH: ${{ steps.slot.outputs.fresh }}
+          KAMAL_HOST: ${{ secrets.KAMAL_HOST }}
+          # Read by .kamal/secrets-common and the slot's config.
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AI_DAILY_SPEND_LIMIT_USD: ${{ vars.AI_DAILY_SPEND_LIMIT_USD }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          VERDICT_API_DB_PASSWORD: ${{ secrets.VERDICT_API_DB_PASSWORD }}
+          VERDICT_WEB_DB_PASSWORD: ${{ secrets.VERDICT_WEB_DB_PASSWORD }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          version="pr-$PR-$SHA"
+          dest="preview-$SLOT"
+          scripts/preview-comment.sh "$PR" "$SLOT" "Deploying a preview of \`${SHA:0:7}\`…"
+          export APP_VERSION="$version"
+          api=(-c config/deploy.api.yml -d "$dest")
+          web=(-c config/deploy.web.yml -d "$dest")
+          # Whatever an earlier pull request left in this slot goes, so this one starts empty. Before
+          # loading, since it also prunes every image no container uses.
+          if [ "$FRESH" = true ]; then scripts/preview-remove.sh "$KAMAL_HOST" "$SLOT"; fi
+          # The artifact comes from the pull request's run: load it only if it holds exactly the
+          # expected image, so it can't replace another tag on the server.
+          for image in api web; do
+            want="localhost:5555/rayanalyasi/verdict/$image:$version"
+            tags=$(gunzip -c "$RUNNER_TEMP/images/$image.tar.gz" | tar -xO manifest.json | jq -r '[.[].RepoTags[]] | join(" ")')
+            if [ "$tags" != "$want" ]; then echo "::error::The $image artifact isn't just $want"; exit 1; fi
+            gunzip -c "$RUNNER_TEMP/images/$image.tar.gz" | ssh "$KAMAL_HOST" docker load
+          done
+          bundle exec kamal accessory boot all "${api[@]}"
+          bundle exec kamal app boot "${api[@]}" --version "$version" --roles api
+          bundle exec kamal app stop "${api[@]}" --roles 'worker-*'
+          bundle exec kamal app boot "${api[@]}" --version "$version" --roles 'worker-*'
+          bundle exec kamal app boot "${web[@]}" --version "$version"
+          bundle exec kamal prune all "${api[@]}"
+          bundle exec kamal prune all "${web[@]}"
+          ./scripts/smoke-test.sh "https://verdict-$dest.alyasi.tech" "$version"
+          scripts/preview-comment.sh "$PR" "$SLOT" "Preview of \`${SHA:0:7}\`: https://verdict-$dest.alyasi.tech
+
+          It updates on each of your pushes, and goes away when this pull request closes, is merged or loses the \`preview\` label. It's behind the same login as staging."
+      - name: Remove the preview
+        if: env.ACTION == 'remove'
+        env:
+          SLOT: ${{ steps.slot.outputs.slot }}
+          KAMAL_HOST: ${{ secrets.KAMAL_HOST }}
+        run: |
+          set -euo pipefail
+          if [ -n "$SLOT" ]; then
+            scripts/preview-remove.sh "$KAMAL_HOST" "$SLOT"
+            ssh "$KAMAL_HOST" "rm -f ~/.verdict-previews/$SLOT"
+          fi
+          scripts/preview-comment.sh "$PR" "" "Preview removed: $REASON."
+      - name: Say the deploy failed
+        if: failure() && env.ACTION == 'deploy'
+        env:
+          SLOT: ${{ steps.slot.outputs.slot }}
+        run: |
+          scripts/preview-comment.sh "$PR" "$SLOT" \
+            "The preview of \`${SHA:0:7}\` didn't deploy: $RUN_URL. If an earlier version was running, it still is."

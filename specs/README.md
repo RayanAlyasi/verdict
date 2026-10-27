@@ -22,3 +22,4 @@ Run the `/spec <feature name>` command (`.claude/commands/spec.md`). It intervie
 | 011 | Ask Verdict (typed and spoken) | 3 | To write |
 | 012 | Printable exam papers (PDF), Kahoot export, revision sheet | 3 | To write |
 | 013 | Share a course with a batch | 3 | To write |
+| [014](014-pull-request-previews.md) | Pull request previews on two labelled slots | 0 | Ready |
