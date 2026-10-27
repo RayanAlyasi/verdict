@@ -329,9 +329,11 @@ jobs:
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
           set -euo pipefail
-          # A newer push may have landed while this run set up; its own run deploys it.
+          # A newer push may have landed while this run set up; its own run deploys it. A slot claimed
+          # just now goes back, in case that commit never deploys.
           if [ "$(gh api "repos/$REPO/pulls/$PR" --jq .head.sha)" != "$SHA" ]; then
             echo "The pull request has a newer commit; its run deploys that one."
+            if [ "$FRESH" = true ]; then scripts/preview-remove.sh "$KAMAL_HOST" "$SLOT" "$PR" || [ $? = 3 ]; fi
             exit 0
           fi
           version="pr-$PR-$SHA"
@@ -411,10 +413,12 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      actions: read
       id-token: write # proves to Tailscale that this job runs in the preview environment
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
+      RUN_ID: ${{ github.run_id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -444,6 +448,11 @@ jobs:
           KAMAL_HOST: ${{ secrets.KAMAL_HOST }}
         run: |
           set -euo pipefail
+          # A deploy in flight could be relabelled after this reads the label; leave that to the next
+          # sweep rather than remove a slot mid-deploy.
+          others=$(gh api "repos/$REPO/actions/workflows/preview.yml/runs?per_page=50" \
+            --jq "[.workflow_runs[] | select(.id != $RUN_ID and .status != \"completed\")] | length")
+          if [ "$others" -gt 0 ]; then echo "Another preview run is in progress; the next sweep looks again."; exit 0; fi
           list=$(ssh "$KAMAL_HOST" 'mkdir -p ~/.verdict-previews; for s in 1 2; do echo "$s $(cat ~/.verdict-previews/$s 2>/dev/null)"; done')
           mapfile -t slots <<<"$list"
           # A for loop, not while read: ssh would read the rest of the list from standard input.
