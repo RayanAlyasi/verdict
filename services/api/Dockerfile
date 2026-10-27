@@ -43,3 +43,4 @@ USER verdict
 EXPOSE 8000
 ENTRYPOINT ["tini", "-g", "--"]
 CMD ["sh", "-c", "python -m verdict.migrate && exec uvicorn verdict.main:app --host 0.0.0.0 --port 8000"]
+RUN false
