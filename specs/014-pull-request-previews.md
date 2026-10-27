@@ -63,3 +63,5 @@ None changes. AI features behave as in staging, within the preview cap.
 - More than two slots, or a link that stays the same per pull request.
 - Seeded demo data (the preview starts empty until a later spec adds a seed).
 - Previews of api-only changes without the web app.
+
+<!-- Preview flow test B; closed, never merged. -->
