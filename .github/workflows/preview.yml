@@ -343,8 +343,9 @@ jobs:
           web=(-c config/deploy.web.yml -d "$dest")
           scripts/preview-comment.sh "$PR" "$SLOT" "Deploying a preview of \`${SHA:0:7}\`…"
           # Each image goes just before it boots: another deploy's prune removes images that no
-          # container uses yet.
-          ship() { gunzip -c "$RUNNER_TEMP/images/$1.tar.gz" | ssh "$KAMAL_HOST" docker load; }
+          # container uses yet. One load at a time: two at once can collide in the containerd image
+          # store on layers they share ("failed to ingest blobs").
+          ship() { gunzip -c "$RUNNER_TEMP/images/$1.tar.gz" | ssh "$KAMAL_HOST" 'mkdir -p ~/.verdict-previews && flock ~/.verdict-previews/load.lock docker load'; }
           # How far the deploy got, for the failure comment: the parts boot one at a time, so a failure
           # can leave some of them on the new version.
           reached() { echo "$1" > "$RUNNER_TEMP/reached"; }
