@@ -159,7 +159,12 @@ jobs:
           set -euo pipefail
           # Not if a newer commit has replaced it: that one's comment stands.
           [ "$(gh api "repos/$REPO/pulls/$PR" --jq .head.sha)" = "$SHA" ] || exit 0
-          scripts/preview-comment.sh "$PR" "$SLOT" "The preview of \`${SHA:0:7}\` didn't build: $RUN_URL"
+          if [ -n "$SLOT" ]; then
+            scripts/preview-comment.sh "$PR" "$SLOT" \
+              "The preview of \`${SHA:0:7}\` didn't build: $RUN_URL. The server wasn't touched, so the earlier version still runs at https://verdict-preview-$SLOT.alyasi.tech"
+          else
+            scripts/preview-comment.sh "$PR" "" "The preview of \`${SHA:0:7}\` didn't build: $RUN_URL"
+          fi
 
   apply:
     name: ${{ needs.plan.outputs.action }} pull request ${{ needs.plan.outputs.pr }}
@@ -324,6 +329,11 @@ jobs:
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
           set -euo pipefail
+          # A newer push may have landed while this run set up; its own run deploys it.
+          if [ "$(gh api "repos/$REPO/pulls/$PR" --jq .head.sha)" != "$SHA" ]; then
+            echo "The pull request has a newer commit; its run deploys that one."
+            exit 0
+          fi
           version="pr-$PR-$SHA"
           dest="preview-$SLOT"
           export APP_VERSION="$version"
@@ -337,7 +347,7 @@ jobs:
           # can leave some of them on the new version.
           reached() { echo "$1" > "$RUNNER_TEMP/reached"; }
           # Whatever an earlier pull request left in this slot goes, so this one starts empty.
-          if [ "$FRESH" = true ]; then reached reset; scripts/preview-remove.sh "$KAMAL_HOST" "$SLOT"; fi
+          if [ "$FRESH" = true ]; then reached reset; scripts/preview-remove.sh "$KAMAL_HOST" "$SLOT" "$PR" --keep-claim; fi
           bundle exec kamal accessory boot all "${api[@]}"
           ship api
           bundle exec kamal app boot "${api[@]}" --version "$version" --roles api
@@ -362,13 +372,10 @@ jobs:
           KAMAL_HOST: ${{ secrets.KAMAL_HOST }}
         run: |
           set -euo pipefail
-          # Only while the claim is still this pull request's, so a slot the sweep freed and another
-          # pull request took isn't touched.
-          holder=""
-          if [ -n "$SLOT" ]; then holder=$(ssh "$KAMAL_HOST" "cat ~/.verdict-previews/$SLOT 2>/dev/null || true"); fi
-          if [ -n "$SLOT" ] && [ "$holder" = "$PR" ]; then
-            scripts/preview-remove.sh "$KAMAL_HOST" "$SLOT"
-            ssh "$KAMAL_HOST" "rm -f ~/.verdict-previews/$SLOT"
+          # Status 3: the slot has meanwhile gone to another pull request, so this one's preview is gone.
+          if [ -n "$SLOT" ]; then
+            status=0; scripts/preview-remove.sh "$KAMAL_HOST" "$SLOT" "$PR" || status=$?
+            [ "$status" = 0 ] || [ "$status" = 3 ] || exit "$status"
           fi
           scripts/preview-comment.sh "$PR" "" "Preview removed: $REASON."
       # Keeps the slot in the comment, so a later removal still finds it, and says what's running.
@@ -449,10 +456,10 @@ jobs:
             labelled=$(jq -r '[.labels[].name] | index("preview") != null' <<<"$pull")
             case "$state" in open | closed) ;; *) echo "::error::Unexpected state for #$pr: $state"; exit 1 ;; esac
             if [ "$state" = open ] && [ "$labelled" = true ]; then echo "Slot $slot: #$pr is still open and labelled."; continue; fi
-            # Only if the claim hasn't changed hands since the list was read.
-            [ "$(ssh -n "$KAMAL_HOST" "cat ~/.verdict-previews/$slot 2>/dev/null")" = "$pr" ] || continue
-            scripts/preview-remove.sh "$KAMAL_HOST" "$slot"
-            ssh -n "$KAMAL_HOST" "rm -f ~/.verdict-previews/$slot"
+            # Status 3: the claim changed hands since the list was read, so there's nothing to do.
+            status=0; scripts/preview-remove.sh "$KAMAL_HOST" "$slot" "$pr" || status=$?
+            if [ "$status" = 3 ]; then continue; fi
+            [ "$status" = 0 ] || exit "$status"
             scripts/preview-comment.sh "$pr" "" "Preview removed: the pull request is no longer open with the \`preview\` label."
             echo "Slot $slot: removed the preview of #$pr."
           done
