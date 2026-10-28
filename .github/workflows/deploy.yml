@@ -68,6 +68,9 @@ jobs:
             dockerfile: services/api/Dockerfile
           - image: web
             dockerfile: apps/web/Dockerfile
+          # Postgres with WAL-G, for the db and backup accessories.
+          - image: db
+            dockerfile: config/db/Dockerfile
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -177,7 +180,7 @@ jobs:
           VERSION: ${{ steps.plan.outputs.version }}
         run: |
           set -euo pipefail
-          for image in api web; do
+          for image in api web db; do
             ref="ghcr.io/${GITHUB_REPOSITORY,,}/$image"
             docker buildx imagetools create --tag "$ref:$VERSION" "$ref:sha-$GITHUB_SHA"
           done

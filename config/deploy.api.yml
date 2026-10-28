@@ -93,8 +93,9 @@ accessories:
   db:
     # Kamal doesn't add the destination to accessory names, so the name carries it.
     service: verdict-<%= ENV["KAMAL_DESTINATION"] %>-db
-    # Not updated by deploys: `kamal accessory reboot db` picks up a new image.
-    image: pgvector/pgvector:0.8.7-pg18-trixie@sha256:9d9c930220cb9bf2f956d10a8f909cf9973d9672ca0278aef2c1e6facccad2e0
+    # Postgres with WAL-G (config/db/Dockerfile), built and tagged with the app's images. A deploy
+    # leaves a running database as it is; docs/DEPLOYMENT.md says how to move it to a new image.
+    image: "ghcr.io/rayanalyasi/verdict/db:<%= ENV["APP_VERSION"] %>"
     host: <%= ENV.fetch("KAMAL_HOST") %>
     env:
       clear:
@@ -108,9 +109,14 @@ accessories:
     files:
       - config/db/10-roles.sql:/docker-entrypoint-initdb.d/10-roles.sql:ro
       - config/db/20-role-passwords.sh:/docker-entrypoint-initdb.d/20-role-passwords.sh:ro
-    # A host folder, not a named volume, so a Docker volume prune can't delete it.
     volumes:
+      # A host folder, not a named volume, so a Docker volume prune can't delete it.
       - /var/lib/verdict/<%= ENV["KAMAL_DESTINATION"] %>/postgres:/var/lib/postgresql
+      # WAL-G's storage, credentials and encryption key. They stay on the server and never reach
+      # CI (docs/DEPLOYMENT.md), and must exist before the database first starts.
+      - /etc/verdict/<%= ENV["KAMAL_DESTINATION"] %>/wal-g:/etc/wal-g:ro
+      # Shared with the backup accessory, which reaches Postgres through this socket.
+      - verdict-<%= ENV["KAMAL_DESTINATION"] %>-db-socket:/var/run/postgresql
     options:
       memory: 1g
       shm-size: 256m

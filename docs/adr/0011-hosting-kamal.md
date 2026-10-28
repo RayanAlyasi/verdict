@@ -39,7 +39,7 @@ ADR 0003 assumed Coolify. Checked against Verdict's needs, Coolify falls short i
 
 ## Consequences
 - **Reviewable infrastructure:** changes go through pull requests, and the setup can be rebuilt from the repo.
-- **Small attack surface:** Verdict adds only Docker containers to the server (kamal-proxy, the apps, the database and the tunnels), and its SSH is reachable only on the private network.
+- **Small attack surface:** Verdict adds only Docker containers to the server (kamal-proxy, the apps, the database, its backups and the tunnels), and its SSH is reachable only on the private network.
 - **Bounded data loss:** at most about a minute of data is lost, and restores are proven every month.
 - **No automatic failover:** a dead VM means minutes of downtime while it's replaced. That's accepted for the feedback phase.
 - **Previews are limited:** two at a time, only for the maintainer's own pull requests from this repository, and each one costs about 700 MB of memory while it runs.

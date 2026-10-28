@@ -37,7 +37,7 @@ updates:
   # Base images get no security updates, only these version updates, so an OS fix waits the same
   # 7 days: take an urgent one by hand (docs/DEPLOYMENT.md).
   - package-ecosystem: docker
-    directories: ["/apps/web", "/services/api"]
+    directories: ["/apps/web", "/services/api", "/config/db"]
     schedule: { interval: weekly }
     cooldown: { default-days: 7 }
     commit-message: { prefix: chore, include: scope }

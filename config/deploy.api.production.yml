@@ -20,3 +20,22 @@ accessories:
         - TUNNEL_TOKEN:CLOUDFLARE_TUNNEL_TOKEN
     options:
       memory: 128m
+  # Nightly full backups and the monthly restore check (config/db/bin/db-schedule.sh), from the
+  # database's own image. It reads the data folder while Postgres runs, so read-only.
+  backup:
+    service: verdict-production-backup
+    image: "ghcr.io/rayanalyasi/verdict/db:<%= ENV["APP_VERSION"] %>"
+    host: <%= ENV.fetch("KAMAL_HOST") %>
+    cmd: db-schedule.sh
+    env:
+      clear:
+        PGHOST: /var/run/postgresql
+        PGUSER: verdict
+    volumes:
+      - /var/lib/verdict/production/postgres:/var/lib/postgresql:ro
+      - /etc/verdict/production/wal-g:/etc/wal-g:ro
+      - verdict-production-db-socket:/var/run/postgresql
+    options:
+      user: postgres
+      # The restore check runs a second Postgres on a copy of the database.
+      memory: 1g
