@@ -1,20 +1,27 @@
 #!/usr/bin/env bash
-# Usage: db-restore.sh '<time>' | latest
-# Restores the database as it was at <time>, a timestamp with its zone such as
-# '2026-10-28 14:05:00+00', or as far as the archive goes with "latest". Runs in a one-off
-# container from this image, with the emptied data folder and the backup config mounted
-# (docs/DEPLOYMENT.md). Fetches the newest full backup that finished before <time> and replays the
-# archived WAL up to it. Postgres then promotes the copy onto a new timeline and archives that
-# timeline's history, so later backups and restores follow it. Stops Postgres when it's done.
+# Usage: db-restore.sh '<time>' | latest  <timeline> | latest
+# Replaces an environment's database with its state at <time>, a timestamp with its zone such as
+# '2026-10-28 14:05:00+00', or as far as the archive goes with "latest". <timeline> is the one the
+# database being replaced was on (docs/DEPLOYMENT.md says how to find it). Naming it matters: a
+# restore that was later backed out leaves a newer timeline in the archive, and following that one
+# would stop at its branch point.
+# Runs in a one-off container from this image, with the emptied data folder and the backup config
+# mounted. Fetches the newest full backup that finished before <time> and replays the archived WAL
+# up to it. Postgres then promotes the copy onto a new timeline and archives its history, so use
+# this only to replace the database, never to look at old data. Stops Postgres when it's done.
 set -euo pipefail
-target="${1:?Usage: db-restore.sh '<time, like 2026-10-28 14:05:00+00>' | latest}"
+usage="Usage: db-restore.sh '<time, like 2026-10-28 14:05:00+00>' | latest  <timeline> | latest"
+target="${1:?$usage}"
+timeline="${2:?$usage}"
+[[ $timeline =~ ^([1-9][0-9]*|latest)$ ]] || { echo "$usage" >&2; exit 1; }
 
 if [ -n "$(ls -A "$PGDATA" 2>/dev/null)" ]; then
   echo "$PGDATA isn't empty. Move the old data aside first." >&2
   exit 1
 fi
 
-recovery=(-c "restore_command=wal-g wal-fetch %f %p" -c recovery_target_action=promote)
+recovery=(-c "restore_command=wal-g wal-fetch %f %p" -c "recovery_target_timeline=$timeline"
+  -c recovery_target_action=promote)
 if [ "$target" = latest ]; then
   backup=LATEST
 else

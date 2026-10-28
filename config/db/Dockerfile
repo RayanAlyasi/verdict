@@ -36,9 +36,11 @@ LABEL org.opencontainers.image.source="https://github.com/RayanAlyasi/verdict" \
 
 # A folder mounted from the server: config.json holds the storage, its credentials and the
 # encryption key, and heartbeats.json the monitoring URLs. zstd shrinks the mostly empty segments
-# that archive_timeout closes to a few kilobytes.
+# that archive_timeout closes to a few kilobytes. Four uploads at a time (the default is 16) keep
+# a catch-up after a storage outage well inside the database container's memory.
 ENV WALG_CONFIG_PATH=/etc/wal-g/config.json \
-  WALG_COMPRESSION_METHOD=zstd
+  WALG_COMPRESSION_METHOD=zstd \
+  WALG_UPLOAD_CONCURRENCY=4
 
 # Each finished WAL segment goes to storage, and archive_timeout closes a segment at least every
 # minute, so a lost server loses at most about a minute of writes. db-restore.sh repeats these.
