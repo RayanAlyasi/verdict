@@ -103,7 +103,7 @@ When this ships, a contributor can clone the repo, run one command and see the V
   - the migration round-trip test;
   - running `scripts/github/setup-repo.sh` once the repository exists.
 - **Staging database:** Postgres 18 with pgvector, WAL-G continuous archiving to off-site storage, and a monthly restore check. Production follows the same setup.
-- **Monitoring:** uptime checks from a separate machine, as the private hosting runbook describes.
+- **Monitoring:** uptime checks from a separate machine, and heartbeats that alert when a backup, a restore check or the 5-minute watch on archiving and disk space misses its ping, as the private hosting runbook describes.
 
 ## Acceptance criteria
 - [ ] Fresh clone: `cp .env.example .env`, fill the secrets marked required (`openssl rand -base64 32`), then `docker compose up -d && pnpm install && uv sync --project services/api && pnpm dev` shows the shell at localhost:3000 with the globe.
@@ -120,6 +120,7 @@ When this ships, a contributor can clone the repo, run one command and see the V
 - [ ] `scripts/github/setup-repo.sh` completes with no failed steps, and a second run changes nothing.
 - [ ] A route over 200 KB of compressed JavaScript fails the e2e suite, and a migration that can't downgrade fails the api tests (each proved once).
 - [ ] The staging database restores to a chosen minute from its WAL-G backups. Proved once by hand, then by the monthly check.
+- [ ] With archiving stalled or the disk 90% full, the watch names the problem and doesn't ping; once archiving catches up it pings again (tested).
 - [ ] The boundary test fails when one module imports another module's internals (proved by a test PR).
 - [ ] Calling the gateway with the fake provider records a usage ledger row, and refuses a call that would pass the student's daily token limit or the platform's daily spend cap.
 - [ ] 20 gateway calls fired at once against limits that fit 5: exactly 5 run and the ledger stays within both limits (tested on real Postgres).

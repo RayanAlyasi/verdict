@@ -2,9 +2,9 @@
 # Usage: scripts/test-db-backups.sh <db image>
 # Proves the database image's backups end to end, with WAL-G writing to a Docker volume instead of
 # object storage: continuous archiving, the backup container's first and later full backups with
-# retention, the restore check, a restore to a moment between two writes, the check again after
-# that restore is backed out, and the refusal to mix two databases' backups. CI runs it for changes
-# to config/db/; it needs only Docker.
+# retention, the watch on stalled archiving, the restore check, a restore to a moment between two
+# writes, the check again after that restore is backed out, and the refusal to mix two databases'
+# backups. CI runs it for changes to config/db/; it needs only Docker.
 set -euo pipefail
 image="${1:?Usage: scripts/test-db-backups.sh <db image>}"
 name="verdict-backup-test-$$"
@@ -20,7 +20,11 @@ trap cleanup EXIT
 # As on a server, apart from the storage and a throwaway key.
 printf '{"WALG_FILE_PREFIX": "/backups", "WALG_PREVENT_WAL_OVERWRITE": "true", "WALG_LIBSODIUM_KEY": "%s", "WALG_LIBSODIUM_KEY_TRANSFORM": "hex"}\n' \
   "$(openssl rand -hex 32)" >"$work/config.json"
-chmod 755 "$work" && chmod 644 "$work/config.json"
+# An unreachable URL, so each ping logs a failure that shows the watch tried to send it.
+printf '{"archiving": "file:///nonexistent/ping"}' >"$work/heartbeats.json"
+pinged="heartbeat ping failed"
+printf '#!/bin/sh\necho Use%%; echo 90%%\n' >"$work/df"
+chmod 755 "$work" "$work/df" && chmod 644 "$work/config.json" "$work/heartbeats.json"
 docker run --rm --volume "$name-backups:/backups" --entrypoint chown "$image" postgres:postgres /backups
 storage=(--volume "$work:/etc/wal-g:ro" --volume "$name-backups:/backups")
 
@@ -67,11 +71,43 @@ echo "--- $(date -u +%T) The backup container's first full backup"
 docker run --detach --name "$name-schedule" "${container[@]}" db-schedule.sh >/dev/null
 for _ in $(seq 1 60); do [ "$(backups)" = 1 ] && break; sleep 1; done
 [ "$(backups)" = 1 ] || { docker logs "$name-schedule"; echo "The backup container took no backup." >&2; exit 1; }
-docker stop --time 5 "$name-schedule" >/dev/null
+docker stop --time 30 "$name-schedule" >/dev/null
+[ "$(docker inspect --format '{{.State.ExitCode}}' "$name-schedule")" = 0 ] ||
+  { echo "The backup container didn't stop cleanly." >&2; exit 1; }
+logs=$(docker logs "$name-schedule" 2>&1)
+grep -q "$pinged" <<<"$logs" || { echo "The backup container didn't run the watch." >&2; exit 1; }
 
 echo "--- $(date -u +%T) Another full backup, keeping none older than it"
 "${backup[@]}" env BACKUP_RETENTION_DAYS=0 db-backup.sh
 [ "$(backups)" = 1 ] || { echo "Retention kept $(backups) backups instead of 1." >&2; exit 1; }
+
+echo "--- $(date -u +%T) The watch on archiving"
+expect_alarm() { # <complaint> [docker run options]: the watch must fail with it, without pinging
+  local complaint="$1" output
+  shift
+  if output=$(docker run --rm "$@" "${container[@]}" db-watch.sh 2>&1) ||
+    grep -q "$pinged" <<<"$output" || ! grep -q "$complaint" <<<"$output"; then
+    echo "The watch should have reported \"$complaint\": $output" >&2
+    exit 1
+  fi
+}
+watch=$("${backup[@]}" db-watch.sh 2>&1) || { echo "$watch" >&2; exit 1; }
+grep -q "$pinged" <<<"$watch" || { echo "The watch didn't ping: $watch" >&2; exit 1; }
+expect_alarm "90% full" --volume "$work/df:/usr/local/sbin/df:ro"
+sql "$name-db" "CREATE TABLE stalled (n int)"
+docker exec "$name-db" chmod 000 /backups
+for n in $(seq 1 12); do
+  sql "$name-db" "INSERT INTO stalled VALUES ($n)"
+  sql "$name-db" "SELECT pg_switch_wal()" >/dev/null
+done
+expect_alarm "waiting to reach storage"
+docker exec "$name-db" chmod 755 /backups
+caught_up=false
+for _ in $(seq 1 90); do
+  if "${backup[@]}" db-watch.sh 2>/dev/null; then caught_up=true; break; fi
+  sleep 1
+done
+$caught_up || { echo "Archiving didn't catch up after the stall." >&2; exit 1; }
 
 sql "$name-db" "INSERT INTO writes VALUES (2)"
 target=$(sql "$name-db" "SELECT now()")
@@ -111,4 +147,4 @@ if docker run --rm --user postgres --env PGHOST=/var/run/postgresql --env PGUSER
   exit 1
 fi
 grep -q "another database's backups" "$work/refused" || { cat "$work/refused" >&2; exit 1; }
-echo "Backups, retention, the restore check and a restore to a chosen moment all work."
+echo "Backups, retention, the archiving watch, the restore check and a restore to a chosen moment all work."

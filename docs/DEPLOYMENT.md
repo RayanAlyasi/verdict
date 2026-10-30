@@ -118,13 +118,14 @@ Staging's and production's databases are archived continuously with WAL-G ([ADR 
 - **Continuous:** the database image's `archive_command` sends each finished write-ahead log (WAL) segment to object storage at a provider other than the server's. `archive_timeout` finishes a segment at least every minute, so a lost server loses at most about a minute of writes.
 - **Nightly:** the backup accessory (`config/db/bin/db-schedule.sh`) takes a full backup at 03:00 UTC. It keeps every backup that a restore to a minute in the last 30 days could start from, and deletes older ones along with the WAL only they needed. On a new database, it takes the first one straight away.
 - **Monthly check:** on the 1st, before that night's backup, `db-check.sh` restores the latest full backup into a scratch folder and replays the archived WAL, along the live database's timeline, past a point it has just written to the live database. It then reads every row of every table back and compares the migration revision. It runs on the server, so student data never reaches CI, and refuses to start without room on the disk for the copy.
-- **Alerts:** each successful backup and check pings a heartbeat URL, so monitoring alerts when one fails or doesn't run.
+- **Watch on archiving:** every 5 minutes, the backup accessory pings a heartbeat unless more than 10 WAL segments are waiting to upload or the disk is 90% full (`config/db/bin/db-watch.sh`). Stalled uploads keep every segment on the server, at least about 23 GB a day per database that writes every minute, and more under load, and the nightly backup only hangs waiting for them, so this is what catches a stall in time.
+- **Alerts:** each successful backup, check and watch pings a heartbeat URL, so monitoring alerts when one fails or doesn't run.
 - **Encrypted:** WAL-G encrypts the data with libsodium before it uploads it. Only backup metadata, such as names, sizes and times, is stored unencrypted.
 - **Locked:** the storage locks every object against deletion and overwriting for 30 days, so not even the server's credentials can remove recent backups.
 - **One storage prefix per database:** two databases' backups in one place would overwrite each other's WAL. A new database, whether from an emptied data folder or a major upgrade, needs a new, empty prefix in `WALG_S3_PREFIX`; the backup refuses to run until it has one.
 - **Settings stay on the server,** in `/etc/verdict/<environment>/wal-g/`, never in GitHub or CI. Both accessories mount the folder read-only. It must exist before the database first starts, or archiving fails and WAL piles up on the server's disk. The folder (mode 500) and its files (mode 400) belong to uid 999, Postgres's user in the image:
   - `config.json`: WAL-G's settings, `WALG_S3_PREFIX`, `AWS_ENDPOINT`, `AWS_REGION`, `AWS_S3_FORCE_PATH_STYLE`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `WALG_PREVENT_WAL_OVERWRITE` (`true`), `WALG_LIBSODIUM_KEY` (`openssl rand -hex 32`) and `WALG_LIBSODIUM_KEY_TRANSFORM` (`hex`);
-  - `heartbeats.json`: `{"backup": "<url>", "restore_check": "<url>"}`.
+  - `heartbeats.json`: `{"backup": "<url>", "restore_check": "<url>", "archiving": "<url>"}`.
 - **Keep a copy of the settings, encryption key included, off the server,** as the private hosting runbook describes. Without the key, the backups can't be read.
 
 ### Restoring to a chosen minute
@@ -205,11 +206,11 @@ Never put secrets in code, logs, issues or screenshots. `deploy.yml` passes the 
 | `EVALS_REPO` (variable), `EVALS_REPO_TOKEN` (secret) | both | evals, evals-pr | The private evaluation set, with a read-only token |
 | `EVALS_SPEND_LIMIT_USD` | variable | evals, evals-pr | Cost cap for one eval run |
 
-Later specs add Google sign-in (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `AUTH_DATABASE_URL` for the web role), a bucket for files (`S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`) and error reporting (`SENTRY_DSN`). Each joins `deploy.yml`, `.kamal/secrets-common`, its Kamal config and this table when its code does.
+Later specs add Google sign-in (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `AUTH_DATABASE_URL` for the web role) and a bucket for files (`S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`). Each joins `deploy.yml`, `.kamal/secrets-common`, its Kamal config and this table when its code does.
 
 `evals` accepts only `main`, for nightly and on-demand runs. Pull request evals use `evals-pr`, which waits for the maintainer's approval ([ADR 0013](adr/0013-ai-review-coderabbit.md)).
 
 ## Monitoring
 - **Health:** `GET /api/health` on the web app reports web, the API, the database and storage, plus the running version and commit. The smoke test and the every-minute uptime checks use it.
-- **Backups:** the nightly backup and the monthly restore check each ping a heartbeat when they succeed, and monitoring alerts on a missed one ([backups](#backups)).
-- **Errors, traces and logs:** errors are reported with personal data scrubbed, every AI call and workflow step emits an OpenTelemetry trace, and logs are structured JSON with a request ID and never personal data or file contents.
+- **Backups:** the nightly backup, the monthly restore check and the watch on archiving each ping a heartbeat when they succeed, and monitoring alerts on a missed one ([backups](#backups)).
+- **Errors, traces and logs:** not collected yet. Logs stay in each container (`docker logs`). The AI gateway accepts an OpenTelemetry tracer, but nothing exports traces. Collecting both off the server is planned, with personal data kept out of them.
