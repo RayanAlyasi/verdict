@@ -29,6 +29,6 @@ if [ -n "$oldest" ]; then
 fi
 
 heartbeat=$(jq -r '.backup // empty' /etc/wal-g/heartbeats.json 2>/dev/null || true)
-if [ -n "$heartbeat" ] && ! curl -fsS --retry 3 -o /dev/null "$heartbeat"; then
+if [ -n "$heartbeat" ] && ! curl -fsS --retry 3 --max-time 10 -o /dev/null "$heartbeat"; then
   echo "The heartbeat ping failed, so monitoring will report this run as missed." >&2
 fi

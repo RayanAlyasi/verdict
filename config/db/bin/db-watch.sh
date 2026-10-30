@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Pings the "archiving" URL in /etc/wal-g/heartbeats.json only while WAL is reaching storage and the
-# disk has room. db-schedule.sh runs it every 5 minutes, because stalled uploads leave every segment
-# on the server, up to about 23 GB a day per database, and the nightly backup only hangs waiting
-# for them: its heartbeat could be missed after the disk has already filled.
+# Pings the "archiving" URL in /etc/wal-g/heartbeats.json while at most 10 WAL segments are waiting
+# to upload and the disk is under 90% full. db-schedule.sh runs it every 5 minutes, because stalled
+# uploads leave every segment on the server, at least about 23 GB a day once something writes every
+# minute, and the nightly backup only hangs waiting for them: its heartbeat could be missed after
+# the disk has already filled.
 set -euo pipefail
 
 healthy=true
@@ -19,6 +20,6 @@ fi
 $healthy
 
 heartbeat=$(jq -r '.archiving // empty' /etc/wal-g/heartbeats.json 2>/dev/null || true)
-if [ -n "$heartbeat" ] && ! curl -fsS --retry 3 -o /dev/null "$heartbeat"; then
+if [ -n "$heartbeat" ] && ! curl -fsS --retry 3 --max-time 10 -o /dev/null "$heartbeat"; then
   echo "The heartbeat ping failed, so monitoring will report this run as missed." >&2
 fi
