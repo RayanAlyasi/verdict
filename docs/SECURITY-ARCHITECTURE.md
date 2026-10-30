@@ -16,11 +16,11 @@ Students' accounts, uploaded course materials (which may include copyrighted or 
 | Prompt injection from course content | Course text is always treated as data, never instructions; system and user content kept separate; AI has no tools with side effects; outputs verified before display |
 | Unsafe generated interactive code | Runs only in a sandboxed iframe (`sandbox="allow-scripts"`, no same-origin), strict CSP with no network access, automated tests before publishing |
 | Cost abuse of AI | Per-user daily token limits and a platform-wide daily spend cap, reserved atomically so parallel jobs can't overspend; rate limits per IP and user; caching of generated content |
-| Leaked secrets | Three layers: TruffleHog pre-commit hook, GitHub push protection, GitHub secret scanning of all history; secrets only in env vars and GitHub environment secrets, readable only by the jobs that declare that environment; no fallback secret values in code (services refuse to start without them) |
+| Leaked secrets | Three layers: TruffleHog pre-commit hook, GitHub push protection, GitHub secret scanning of all history; secrets only in env vars and GitHub environment secrets, readable only by the jobs that declare that environment, apart from the backup storage's credentials and encryption key, which stay in a file on the server and never reach CI; no fallback secret values in code (services refuse to start without them) |
 | Vulnerable dependencies | Lockfiles committed with hashes; new package versions wait before install (pnpm `minimumReleaseAge`, Dependabot cooldown; security fixes not delayed); dependency review blocks PRs adding known-vulnerable packages; CodeQL scans code; dependencies meet ADR 0010's maintenance rules |
 | Supply chain in CI | Every action pinned to a full commit SHA (enforced by a repository setting; Dependabot updates the pins); zizmor audits workflows on every PR; the only third-party GitHub App with write access is CodeRabbit, installed on this repository alone and bound by the branch rules (ADR 0013); read-only workflow token by default and minimal `permissions` per job; checkout never persists credentials; workflows from outside contributors need approval; no secrets on fork PRs; shipped images built without caches and signed with build provenance (ADR 0012) |
 | Compromised deploy tooling | Kamal keeps no dashboard or agent on the server; CI deploys over SSH on a private network, which only `deploy.yml` in a deploy environment can join, as a deploy user whose key works only from that network, with the host key pinned; web traffic arrives only through each environment's tunnel, so no web ports are open; Kamal installs from a lockfile whose checksums Bundler verifies |
-| Data loss | WAL-G continuous archiving to encrypted off-site storage at another provider (restore to any minute, 30 days); restore proven by a monthly automated check |
+| Data loss | WAL-G continuous archiving to encrypted off-site storage at another provider, locked against deletion for 30 days (restore to any minute, 30 days); restore proven by a monthly automated check |
 
 ## HTTP security headers
 `Content-Security-Policy` (strict, nonce-based scripts), `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (microphone only where the mic button is used), `frame-ancestors 'none'`.
@@ -34,7 +34,7 @@ Students' accounts, uploaded course materials (which may include copyrighted or 
 
 ## If a secret leaks
 1. Revoke and rotate the credential immediately at the provider.
-2. Update it in GitHub environment secrets and apply it as [DEPLOYMENT.md](DEPLOYMENT.md#if-a-secret-leaks) describes for that secret: most need only a redeploy, but the database's and the tunnel's need a step on the server.
+2. Update it where it lives, GitHub environment secrets or, for the backup storage, the server's backup settings, and apply it as [DEPLOYMENT.md](DEPLOYMENT.md#if-a-secret-leaks) describes for that secret: most need only a redeploy, but the database's, the tunnel's and the backups' need a step on the server.
 3. Check provider logs for misuse during the exposure window.
 4. Remove it from git history if it was committed, then force-push only after the rotation (rotation is what actually fixes it).
 5. Write a short incident note in the private security log.

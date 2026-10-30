@@ -54,7 +54,7 @@ jobs:
           ai=false; [ "$api_exists" = true ] && [ -d services/api/evals ] && [ "$(touches '^services/api/(verdict/(ai_gateway|generation|verification|ingestion|course_map)/|evals/)')" = true ] && ai=true
           scripts=$(touches "(^scripts/|\.sh$|\.md$|^\.github/workflows/)")
           # What a broken image would otherwise first show as a failed staging deploy.
-          images=false; [ "$(touches "(Dockerfile$|^\.dockerignore$|^package\.json$|^apps/web/(package\.json|next\.config\.ts)$|^pnpm-(lock|workspace)\.yaml$|^services/api/(pyproject\.toml|uv\.lock|\.python-version)$|^config/deploy|^\.github/workflows/(ci|deploy)\.yml$)")" = true ] && images=true
+          images=false; [ "$(touches "(Dockerfile$|^\.dockerignore$|^package\.json$|^apps/web/(package\.json|next\.config\.ts)$|^pnpm-(lock|workspace)\.yaml$|^services/api/(pyproject\.toml|uv\.lock|\.python-version)$|^config/(deploy|db/)|^scripts/test-db-backups\.sh$|^\.github/workflows/(ci|deploy)\.yml$)")" = true ] && images=true
 
           # A Kamal config error would otherwise first show as a failed staging deploy, too.
           kamal=false; [ "$(touches '(^Gemfile|^\.kamal/|^config/deploy|^\.github/workflows/(ci|deploy)\.yml$)')" = true ] && kamal=true
@@ -289,6 +289,8 @@ jobs:
             dockerfile: services/api/Dockerfile
           - image: web
             dockerfile: apps/web/Dockerfile
+          - image: db
+            dockerfile: config/db/Dockerfile
     # The api image starts for real against it: migrations, then serving.
     services:
       db:
@@ -345,6 +347,9 @@ jobs:
           [ "$ok" = true ] && [ "$(docker inspect --format '{{.State.Running}}' worker)" = true ] && exit 0
           docker logs worker
           exit 1
+      - name: Back up, check and restore to a chosen moment with the db image, into a local volume
+        if: matrix.image == 'db'
+        run: scripts/test-db-backups.sh verdict-db:ci
 
   kamal:
     name: kamal

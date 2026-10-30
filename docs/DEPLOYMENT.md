@@ -7,19 +7,19 @@ Three environments run the same images with different data and secrets. Changes 
 | Address | `localhost:3000` (web) and `:8000` (API) | `verdict-staging.alyasi.tech` | `verdict.alyasi.tech` |
 | Access | You | The team and testers, behind an access gate | Everyone |
 | Deploys | `pnpm dev` | Kamal, automatically on every merge to `main` | Kamal, when a GitHub Release is published and approved |
-| Database | Postgres 18 with pgvector in Docker | Postgres 18 with pgvector, continuous backups | Postgres 18 with pgvector, point-in-time recovery |
+| Database | Postgres 18 with pgvector in Docker | Postgres 18 with pgvector, continuous backups with point-in-time recovery | Postgres 18 with pgvector, continuous backups with point-in-time recovery |
 | Files | Local `./storage` | A server volume at `STORAGE_LOCAL_PATH` (a staging bucket is planned for spec 001) | A server volume at `STORAGE_LOCAL_PATH` (a production bucket is planned for spec 001) |
 | AI | Your own key or a local model | Shared key with low limits | Production key, per-user fair use and a platform spend cap |
 | Google sign-in | Development OAuth client | Staging OAuth client | Production OAuth client |
 | Data | Seeded demo course | Seeded demo course and test accounts | Real users; never copied to other environments |
 
 ## How a change reaches production
-1. **A pull request** runs CI: lint, types, tests, security scans, end-to-end tests, and phone and desktop screenshots in English and Arabic. A pull request that changes a Dockerfile, a lockfile or the deploy config also builds both images, without pushing them, and one that changes the Kamal config checks it with `kamal config`.
+1. **A pull request** runs CI: lint, types, tests, security scans, end-to-end tests, and phone and desktop screenshots in English and Arabic. A pull request that changes a Dockerfile, a lockfile or the deploy config also builds the images, without pushing them, and one that changes the Kamal config checks it with `kamal config`. Building the database image also tests its backups: a full backup, the restore check, and a restore to a chosen moment (`scripts/test-db-backups.sh`).
 2. **Merging to `main`:**
-   - Once `ci-ok` is green, CI builds the `web` and `api` images and tags them `sha-<commit>`.
+   - Once `ci-ok` is green, CI builds the `web`, `api` and `db` images and tags them `sha-<commit>`.
    - It signs their build provenance and pushes them to GitHub Container Registry.
    - It deploys them to staging with Kamal, over SSH on the private network that the private hosting runbook describes:
-     - the database and the tunnel start on the first deploy and keep running after it;
+     - the database, its backup container and the tunnel start on the first deploy and keep running after it (moving them to a new image is a [step on the server](#moving-the-database-to-a-new-image));
      - the api deploys first and migrates, so the web app never relies on a migration that hasn't run;
      - the old workers stop before the new ones start, since two workers with the same executor ID could both resume a workflow;
      - then the web app deploys.
@@ -38,8 +38,9 @@ gh attestation verify oci://ghcr.io/rayanalyasi/verdict/api:v0.4.0 -R RayanAlyas
 ## Images
 - **`apps/web/Dockerfile`:** Next.js's standalone server on Node 26, run as the non-root `node` user. `pnpm --dir apps/web start` runs the same server locally after a build.
 - **`services/api/Dockerfile`:** Python 3.14 with the locked dependencies, run as a non-root user. By default it migrates the database with `python -m verdict.migrate`, then starts uvicorn; each worker role runs `python -m verdict.worker <queue>` instead.
-- **Both:** built from the repository root for arm64, with base images pinned by digest (Dependabot proposes updates after the same 7-day wait as other dependencies; for an urgent operating-system fix, update the digest by hand), current root certificates and the `org.opencontainers.image.licenses` label.
-- **Deploys** also label each image `service=verdict-api` or `service=verdict-web`, which Kamal checks before it runs one.
+- **`config/db/Dockerfile`:** the deployed database, Postgres 18 with pgvector, plus WAL-G and the backup scripts in `config/db/bin/` ([backups](#backups)). WAL-G is a release binary checked against a pinned checksum; Dependabot can't see it, so update it by hand. Previews run the plain base image instead.
+- **All three:** built from the repository root for arm64, with base images pinned by digest (Dependabot proposes updates after the same 7-day wait as other dependencies; for an urgent operating-system fix, update the digest by hand) and current root certificates. The web and api images carry the `org.opencontainers.image.licenses` label.
+- **Deploys** also label each image `service=verdict-<image>`; Kamal checks the api's and the web app's before it runs them.
 - **Storage:** the api writes uploads to `/app/storage`. Deployed, that's the server folder `/var/lib/verdict/<environment>/storage`, owned by uid 1000 (the api's user), which Kamal mounts into the api and every worker.
 
 Build and run one locally with `docker build -f services/api/Dockerfile --build-arg APP_COMMIT=$(git rev-parse HEAD) -t verdict-api .`.
@@ -67,7 +68,7 @@ The api migrates (`python -m verdict.migrate`) before it answers its health chec
 - **Never delete a migration that has reached staging;** undo it with a new one. The api treats a database revision it doesn't know as one from a newer version and leaves the database alone, so a deleted revision would stop later migrations from running.
 
 ## The deployed database
-Each environment's Postgres runs on the server as a Kamal accessory (`config/deploy.api.yml`), with its data in `/var/lib/verdict/<environment>/postgres`. When that folder is empty, Postgres creates the database and runs `config/db/`: the api and web roles, then their passwords from `VERDICT_API_DB_PASSWORD` and `VERDICT_WEB_DB_PASSWORD`. The apps never connect as the superuser.
+Each environment's Postgres runs on the server as a Kamal accessory (`config/deploy.api.yml`), with its data in `/var/lib/verdict/<environment>/postgres`. When that folder is empty, Postgres creates the database and runs `config/db/10-roles.sql` and `config/db/20-role-passwords.sh`: the api and web roles, then their passwords from `VERDICT_API_DB_PASSWORD` and `VERDICT_WEB_DB_PASSWORD`. The apps never connect as the superuser.
 
 These steps run on the server, as the private hosting runbook describes; `<environment>` is `staging` or `production`.
 - **A first start that stopped halfway:**
@@ -89,6 +90,16 @@ These steps run on the server, as the private hosting runbook describes; `<envir
   3. Put the same value in the environment's matching secret: `VERDICT_API_DB_PASSWORD` for `verdict_api`, `VERDICT_WEB_DB_PASSWORD` for `verdict_web`.
   4. Run the environment's last deploy again. Until it finishes, connections the app already holds keep working, but new ones fail.
 
+### Moving the database to a new image
+A deploy leaves the running database and backup containers as they are. To move them to the image of the environment's current version, for example after Dependabot updates `config/db/Dockerfile`'s base image, remove them on the server and run the environment's last deploy again, which starts them from its image. The data folder stays. The site is down until the deploy has started the database, so pick a quiet moment:
+
+```bash
+docker stop verdict-<environment>-backup verdict-<environment>-db
+docker rm verdict-<environment>-backup verdict-<environment>-db
+```
+
+A change to the backup scripts alone needs only the backup container removed, with no downtime. A new Postgres major version needs an upgrade of the data, not just a new image, and a new storage prefix for its backups.
+
 ## If a secret leaks
 Rotate it at its source first, then:
 - **App secrets** (`BETTER_AUTH_SECRET`, `ANTHROPIC_API_KEY`, `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET`): update the environment secret and run the environment's last deploy again.
@@ -96,16 +107,85 @@ Rotate it at its source first, then:
 - **`POSTGRES_PASSWORD`:** set the new one on the server with `docker exec -it verdict-<environment>-db psql -U verdict -d verdict -c '\password verdict'`, then update the secret. Postgres reads the variable only when it creates the database.
 - **`CLOUDFLARE_TUNNEL_TOKEN`:** a deploy leaves a running tunnel as it is. Update the secret, remove the tunnel container on the server (`docker rm -f verdict-<environment>-tunnel`), then run the deploy again, which starts it with the new token. The site is down in between.
 - **The deploy key** (`KAMAL_SSH_PRIVATE_KEY`): make a new key pair, replace the deploy user's `authorized_keys` on the server, then update the secret.
+- **The backup storage's credentials:** replace them in the server's `config.json` ([backups](#backups)), then revoke the old ones. WAL-G reads the file on every run, so nothing needs restarting.
+- **The backup encryption key:** put a new one in `config.json`, then take a full backup at once (`docker exec verdict-<environment>-backup db-backup.sh`). Keep the old key until the backups made with it have aged out after 30 days: restoring a moment from before the change needs it. The minutes between the change and that backup can't be restored, since they'd need both keys.
 
 ## Running Kamal by hand
 Deploys run in CI. For logs or a one-off look, a maintainer on the private network can run Kamal from a checkout: run `bundle install`, export `KAMAL_HOST`, point SSH at the deploy key as `deploy.yml` does, then for example run `bundle exec kamal app logs -c config/deploy.api.yml -d staging -r worker-ingestion`. Commands that deploy or boot need every secret in `.kamal/secrets-common`, so leave those to CI.
 
 ## Backups
-Production's database is archived continuously, so it can be restored to any minute in the last 30 days. Backups are encrypted and stored with a different provider, and an automated restore proves them every month.
+Staging's and production's databases are archived continuously with WAL-G ([ADR 0011](adr/0011-hosting-kamal.md)), so each can be restored to any minute of the last 30 days. Previews have no backups.
+- **Continuous:** the database image's `archive_command` sends each finished write-ahead log (WAL) segment to object storage at a provider other than the server's. `archive_timeout` finishes a segment at least every minute, so a lost server loses at most about a minute of writes.
+- **Nightly:** the backup accessory (`config/db/bin/db-schedule.sh`) takes a full backup at 03:00 UTC. It keeps every backup that a restore to a minute in the last 30 days could start from, and deletes older ones along with the WAL only they needed. On a new database, it takes the first one straight away.
+- **Monthly check:** on the 1st, before that night's backup, `db-check.sh` restores the latest full backup into a scratch folder and replays the archived WAL, along the live database's timeline, past a point it has just written to the live database. It then reads every row of every table back and compares the migration revision. It runs on the server, so student data never reaches CI, and refuses to start without room on the disk for the copy.
+- **Alerts:** each successful backup and check pings a heartbeat URL, so monitoring alerts when one fails or doesn't run.
+- **Encrypted:** WAL-G encrypts the data with libsodium before it uploads it. Only backup metadata, such as names, sizes and times, is stored unencrypted.
+- **Locked:** the storage locks every object against deletion and overwriting for 30 days, so not even the server's credentials can remove recent backups.
+- **One storage prefix per database:** two databases' backups in one place would overwrite each other's WAL. A new database, whether from an emptied data folder or a major upgrade, needs a new, empty prefix in `WALG_S3_PREFIX`; the backup refuses to run until it has one.
+- **Settings stay on the server,** in `/etc/verdict/<environment>/wal-g/`, never in GitHub or CI. Both accessories mount the folder read-only. It must exist before the database first starts, or archiving fails and WAL piles up on the server's disk. The folder (mode 500) and its files (mode 400) belong to uid 999, Postgres's user in the image:
+  - `config.json`: WAL-G's settings, `WALG_S3_PREFIX`, `AWS_ENDPOINT`, `AWS_REGION`, `AWS_S3_FORCE_PATH_STYLE`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `WALG_PREVENT_WAL_OVERWRITE` (`true`), `WALG_LIBSODIUM_KEY` (`openssl rand -hex 32`) and `WALG_LIBSODIUM_KEY_TRANSFORM` (`hex`);
+  - `heartbeats.json`: `{"backup": "<url>", "restore_check": "<url>"}`.
+- **Keep a copy of the settings, encryption key included, off the server,** as the private hosting runbook describes. Without the key, the backups can't be read.
+
+### Restoring to a chosen minute
+For example, after a bad migration or a mistaken delete. These steps run on the server; times are UTC. A restore promotes the restored database onto a new timeline, so use `db-restore.sh` only to replace the environment's database, never to look at old data.
+1. Pick the moment just before the damage, such as `2026-10-28 14:05:00+00`. `docker exec verdict-<environment>-backup wal-g backup-list` lists the full backups, and the moment must come after the oldest one finished.
+2. Note the database's timeline. The restore follows it, rather than a newer one left by an earlier restore that was backed out:
+
+   ```bash
+   docker exec verdict-<environment>-db psql -U verdict -XAtc 'SELECT timeline_id FROM pg_control_checkpoint()'
+   ```
+3. Stop the apps, the backup container and the database, so nothing writes during the restore:
+
+   ```bash
+   docker stop $(docker ps -q --filter label=destination=<environment>) verdict-<environment>-backup verdict-<environment>-db
+   ```
+4. Keep the current data, and give the database an empty folder:
+
+   ```bash
+   sudo mv /var/lib/verdict/<environment>/postgres /var/lib/verdict/<environment>/postgres.before-restore
+   sudo install -d -o 999 -g 999 -m 700 /var/lib/verdict/<environment>/postgres
+   ```
+5. Restore with the database's own image, giving the moment and the timeline. Its log ends with the last transaction it replayed.
+
+   ```bash
+   docker run --rm --user postgres \
+     --volume /var/lib/verdict/<environment>/postgres:/var/lib/postgresql \
+     --volume /etc/verdict/<environment>/wal-g:/etc/wal-g:ro \
+     "$(docker inspect --format '{{.Config.Image}}' verdict-<environment>-db)" \
+     db-restore.sh '2026-10-28 14:05:00+00' <timeline>
+   ```
+6. Start the database and the backup container, take a full backup on the new timeline, then run the environment's last deploy again to start the apps:
+
+   ```bash
+   docker start verdict-<environment>-db verdict-<environment>-backup
+   until docker exec verdict-<environment>-db pg_isready -q -U verdict; do sleep 2; done
+   docker exec verdict-<environment>-backup db-backup.sh
+   ```
+7. Once the restored data looks right, delete `postgres.before-restore`. To back the restore out instead, stop the database, swap the two folders back and start it again; later restores and checks name their timeline, so the one the restore left in the archive does no harm.
+
+### Restoring after losing the server
+On the new server, before anything deploys to that environment (for staging, merge nothing to `main` until this is done):
+1. Recreate `/etc/verdict/<environment>/wal-g/` from the copy kept off the server.
+2. Pull the database image of the version you'll deploy, logging in to GitHub Container Registry first if the package is private:
+
+   ```bash
+   docker pull ghcr.io/rayanalyasi/verdict/db:<version>
+   ```
+3. Restore as far as the archive goes into an empty data folder. `latest` follows the newest timeline in the archive; if an earlier restore was backed out, name the timeline with the newest WAL instead, which `wal-g wal-show` lists.
+
+   ```bash
+   sudo install -d -o 999 -g 999 -m 700 /var/lib/verdict/<environment>/postgres
+   docker run --rm --user postgres \
+     --volume /var/lib/verdict/<environment>/postgres:/var/lib/postgresql \
+     --volume /etc/verdict/<environment>/wal-g:/etc/wal-g:ro \
+     ghcr.io/rayanalyasi/verdict/db:<version> db-restore.sh latest latest
+   ```
+4. Run that version's deploy, which starts the database on the restored data, then take a full backup on the new timeline with `docker exec verdict-<environment>-backup db-backup.sh`.
 
 ## Secrets and variables
 - **Development:** `.env`, which git ignores. [`.env.example`](../.env.example) documents the names.
-- **Staging and production:** GitHub environment secrets and variables, passed to Kamal through `.kamal/secrets-common` at deploy time. Only the jobs that declare an environment can read its values.
+- **Staging and production:** GitHub environment secrets and variables, passed to Kamal through `.kamal/secrets-common` at deploy time. Only the jobs that declare an environment can read its values. The backup settings are the exception: they stay on the server ([backups](#backups)).
 
 Never put secrets in code, logs, issues or screenshots. `deploy.yml` passes the app secrets to Kamal; keep its list and `.kamal/secrets-common` in sync with this table.
 
@@ -131,4 +211,5 @@ Later specs add Google sign-in (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and 
 
 ## Monitoring
 - **Health:** `GET /api/health` on the web app reports web, the API, the database and storage, plus the running version and commit. The smoke test and the every-minute uptime checks use it.
+- **Backups:** the nightly backup and the monthly restore check each ping a heartbeat when they succeed, and monitoring alerts on a missed one ([backups](#backups)).
 - **Errors, traces and logs:** errors are reported with personal data scrubbed, every AI call and workflow step emits an OpenTelemetry trace, and logs are structured JSON with a request ID and never personal data or file contents.

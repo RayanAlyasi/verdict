@@ -12,7 +12,9 @@ services:
       - "127.0.0.1:5432:5432"   # this machine only: the passwords here are public
     volumes:
       - db-data:/var/lib/postgresql   # Postgres 18 images keep data in a versioned folder under this path
-      - ./config/db:/docker-entrypoint-initdb.d:ro   # the api and web roles, as in staging and production; runs only on a new volume
+      # The api and web roles, as in staging and production; they run only on a new volume.
+      - ./config/db/10-roles.sql:/docker-entrypoint-initdb.d/10-roles.sql:ro
+      - ./config/db/20-role-passwords.sh:/docker-entrypoint-initdb.d/20-role-passwords.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U verdict"]
       interval: 5s

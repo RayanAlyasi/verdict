@@ -153,7 +153,7 @@ See [ADR 0010](adr/0010-stack-revised.md) and [ADR 0011](adr/0011-hosting-kamal.
 ```
 apps/web/           Next.js app (app/[lang]/, components/, lib/, locales/, tests/, e2e/; scripts/ generates the theme and the API client)
 services/api/       FastAPI app: verdict/<module>/, migrations/, tests/, evals/
-config/             Kamal deploy configuration; db/ creates the database roles
+config/             Kamal deploy configuration; db/ creates the database roles and builds the deployed database image, with its backups
 .kamal/ Gemfile     the secrets Kamal reads (references only) and Kamal itself, locked with checksums
 docs/ specs/ scripts/ .claude/ .github/
 ```
