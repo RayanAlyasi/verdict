@@ -58,7 +58,12 @@ for (const device of DEVICES) {
           await new Promise((resolve) =>
             requestAnimationFrame(() => requestAnimationFrame(resolve)),
           );
-          await Promise.all(document.getAnimations().map((animation) => animation.finished));
+          await Promise.all(
+            document
+              .getAnimations()
+              .filter((animation) => animation.effect?.getComputedTiming().endTime !== Infinity)
+              .map((animation) => animation.finished),
+          );
         });
         await page.evaluate(() => document.fonts.ready);
         await page.screenshot({

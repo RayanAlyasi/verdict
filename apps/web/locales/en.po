@@ -82,6 +82,10 @@ msgid "Current question"
 msgstr "Current question"
 
 #: app/[lang]/dev/ui/page.tsx
+msgid "Each light is one idea from your course"
+msgstr "Each light is one idea from your course"
+
+#: app/[lang]/dev/ui/page.tsx
 msgid "Empty state"
 msgstr "Empty state"
 
@@ -97,6 +101,10 @@ msgstr "Explain it"
 #: app/[lang]/dev/ui/page.tsx
 msgid "For example, Biochemistry 201"
 msgstr "For example, Biochemistry 201"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Globe"
+msgstr "Globe"
 
 #: app/[lang]/not-found.tsx
 msgid "Go to the home page"
@@ -261,6 +269,14 @@ msgstr "We couldn't read page 4 of this file. Try a clearer photo."
 #: app/[lang]/dev/ui/overlays/page.tsx
 msgid "We couldn't save your course."
 msgstr "We couldn't save your course."
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "You've mastered <0>64%</0> of what's on your midterm."
+msgstr "You've mastered <0>64%</0> of what's on your midterm."
+
+#: app/[lang]/dev/ui/page.tsx
+#~ msgid "You've mastered 64% of what's on your midterm."
+#~ msgstr "You've mastered 64% of what's on your midterm."
 
 #: app/[lang]/dev/ui/overlays/page.tsx
 msgid "Your midterm is on 3 January. Your plan moves with it."
