@@ -220,7 +220,10 @@ export default async function ComponentGallery() {
         <div className="flex flex-col items-center gap-4">
           <Globe mastered={0.64} inProgress={0.16} orbit className="max-w-82" />
           <p className="text-center text-body text-text-muted">
-            <Trans>You&apos;ve mastered 64% of what&apos;s on your midterm.</Trans>
+            <Trans>
+              You&apos;ve mastered <span className="font-semibold text-glow">64%</span> of
+              what&apos;s on your midterm.
+            </Trans>
           </p>
           <GlobeLegend
             caption={i18n._(msg`Each light is one idea from your course`)}

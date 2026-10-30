@@ -38,7 +38,10 @@ async function recordMotion(page: Page) {
     const ignore = new Set(["offset", "computedOffset", "easing", "composite"]);
     const tick = () => {
       for (const animation of document.getAnimations()) {
-        for (const frame of (animation.effect as KeyframeEffect | null)?.getKeyframes() ?? []) {
+        const effect = animation.effect as KeyframeEffect | null;
+        // Always moving, so it would satisfy these checks by itself. e2e/ambient.spec.ts covers it.
+        if (effect?.target?.closest("[data-testid=space-background]")) continue;
+        for (const frame of effect?.getKeyframes() ?? []) {
           for (const key of Object.keys(frame)) if (!ignore.has(key)) seen.add(key);
         }
       }

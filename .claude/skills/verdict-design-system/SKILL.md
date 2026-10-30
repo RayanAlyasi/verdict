@@ -71,3 +71,5 @@ Every interactive component also has a 44px minimum target and uses logical CSS 
 - Superscripts and fractions break inside flex rows; render equations as inline text lines.
 - Pause globe spin and starfield when the tab is hidden or the element is off screen; render them static under `prefers-reduced-motion`.
 - Keep inputs at 16px or larger, or iOS zooms the page.
+- Stars behind Arabic text read as the dots that tell letters apart. `globals.css` gives Arabic text a soft halo in the sky's colour; anything with a `bg-*` class turns it off, so a fill made another way must do so itself.
+- Full-page screenshots show a hard edge at the viewport's height, because the fixed background doesn't repeat. Students never see it.

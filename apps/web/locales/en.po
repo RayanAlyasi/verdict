@@ -271,8 +271,12 @@ msgid "We couldn't save your course."
 msgstr "We couldn't save your course."
 
 #: app/[lang]/dev/ui/page.tsx
-msgid "You've mastered 64% of what's on your midterm."
-msgstr "You've mastered 64% of what's on your midterm."
+msgid "You've mastered <0>64%</0> of what's on your midterm."
+msgstr "You've mastered <0>64%</0> of what's on your midterm."
+
+#: app/[lang]/dev/ui/page.tsx
+#~ msgid "You've mastered 64% of what's on your midterm."
+#~ msgstr "You've mastered 64% of what's on your midterm."
 
 #: app/[lang]/dev/ui/overlays/page.tsx
 msgid "Your midterm is on 3 January. Your plan moves with it."

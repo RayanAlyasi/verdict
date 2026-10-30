@@ -55,7 +55,7 @@
       opacity: 1;
     }
     100% {
-      translate: -144vw 64vw;
+      translate: -560px 250px;
       opacity: 0;
     }
   }
@@ -86,5 +86,20 @@
       opacity: 0;
       scale: 0.98;
     }
+  }
+}
+
+@layer base {
+  /* A star behind Arabic text reads as the dots that tell its letters apart, so a soft halo in the
+     sky's own colour hides what's next to each letter. Anything with its own fill has no stars
+     behind it and keeps its text plain. */
+  :root:lang(ar) {
+    text-shadow:
+      0 0 2px var(--color-space-900),
+      0 0 4px var(--color-space-900),
+      0 0 8px var(--color-space-900);
+  }
+  :root:lang(ar) :is([class^="bg-"], [class*=" bg-"]):not(body, .bg-transparent) {
+    text-shadow: none;
   }
 }
