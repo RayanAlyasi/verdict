@@ -2,9 +2,9 @@
 # Usage: scripts/test-db-backups.sh <db image>
 # Proves the database image's backups end to end, with WAL-G writing to a Docker volume instead of
 # object storage: continuous archiving, the backup container's first and later full backups with
-# retention, the restore check, a restore to a moment between two writes, the check again after
-# that restore is backed out, and the refusal to mix two databases' backups. CI runs it for changes
-# to config/db/; it needs only Docker.
+# retention, the watch on stalled archiving, the restore check, a restore to a moment between two
+# writes, the check again after that restore is backed out, and the refusal to mix two databases'
+# backups. CI runs it for changes to config/db/; it needs only Docker.
 set -euo pipefail
 image="${1:?Usage: scripts/test-db-backups.sh <db image>}"
 name="verdict-backup-test-$$"
@@ -73,6 +73,28 @@ echo "--- $(date -u +%T) Another full backup, keeping none older than it"
 "${backup[@]}" env BACKUP_RETENTION_DAYS=0 db-backup.sh
 [ "$(backups)" = 1 ] || { echo "Retention kept $(backups) backups instead of 1." >&2; exit 1; }
 
+echo "--- $(date -u +%T) The watch on archiving"
+watch=$("${backup[@]}" db-watch.sh 2>&1)
+[ -z "$watch" ] || { echo "The watch complained on a healthy database: $watch" >&2; exit 1; }
+sql "$name-db" "CREATE TABLE stalled (n int)"
+docker exec "$name-db" chmod 000 /backups
+for n in $(seq 1 12); do
+  sql "$name-db" "INSERT INTO stalled VALUES ($n)"
+  sql "$name-db" "SELECT pg_switch_wal()" >/dev/null
+done
+if watch=$("${backup[@]}" db-watch.sh 2>&1); then
+  echo "The watch passed with archiving stalled." >&2
+  exit 1
+fi
+grep -q "waiting to reach storage" <<<"$watch" || { echo "$watch" >&2; exit 1; }
+docker exec "$name-db" chmod 755 /backups
+caught_up=false
+for _ in $(seq 1 90); do
+  if "${backup[@]}" db-watch.sh 2>/dev/null; then caught_up=true; break; fi
+  sleep 1
+done
+$caught_up || { echo "Archiving didn't catch up after the stall." >&2; exit 1; }
+
 sql "$name-db" "INSERT INTO writes VALUES (2)"
 target=$(sql "$name-db" "SELECT now()")
 sleep 1
@@ -111,4 +133,4 @@ if docker run --rm --user postgres --env PGHOST=/var/run/postgresql --env PGUSER
   exit 1
 fi
 grep -q "another database's backups" "$work/refused" || { cat "$work/refused" >&2; exit 1; }
-echo "Backups, retention, the restore check and a restore to a chosen moment all work."
+echo "Backups, retention, the archiving watch, the restore check and a restore to a chosen moment all work."
