@@ -14,6 +14,54 @@
 }
 
 @theme {
+  /* The space background (components/ui/SpaceBackground.tsx). Ambient, so its timing is set here
+     rather than by a motion token (docs/UX-GUIDELINES.md). */
+  --animate-nebula-drift: nebula-drift 26s ease-in-out infinite alternate;
+  --animate-twinkle-a: twinkle-a 5.5s ease-in-out infinite;
+  --animate-twinkle-b: twinkle-b 7.5s ease-in-out infinite;
+  --animate-shooting-star: shooting-star 13s 1.5s linear infinite;
+
+  @keyframes nebula-drift {
+    to {
+      translate: -6% 4%;
+      scale: 1.14;
+    }
+  }
+  @keyframes twinkle-a {
+    0%,
+    100% {
+      opacity: 0.95;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+  @keyframes twinkle-b {
+    0%,
+    100% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 0.9;
+    }
+  }
+  @keyframes shooting-star {
+    0%,
+    84% {
+      translate: 0 0;
+      opacity: 0;
+    }
+    86% {
+      opacity: 1;
+    }
+    100% {
+      translate: -144vw 64vw;
+      opacity: 0;
+    }
+  }
+}
+
+@theme {
   /* Sheets and dialogs (components/ui/Sheet.tsx): they enter in the slow token and leave faster,
      moving with transform and opacity only. */
   --animate-overlay-in: overlay-in var(--transition-duration-slow) var(--ease-standard);

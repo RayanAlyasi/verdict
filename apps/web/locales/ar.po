@@ -82,6 +82,10 @@ msgid "Current question"
 msgstr "السؤال الحالي"
 
 #: app/[lang]/dev/ui/page.tsx
+msgid "Each light is one idea from your course"
+msgstr "كل ضوء فكرة واحدة من مقررك"
+
+#: app/[lang]/dev/ui/page.tsx
 msgid "Empty state"
 msgstr "حالة فارغة"
 
@@ -97,6 +101,10 @@ msgstr "اشرحه لي"
 #: app/[lang]/dev/ui/page.tsx
 msgid "For example, Biochemistry 201"
 msgstr "مثلًا: الكيمياء الحيوية 201"
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "Globe"
+msgstr "الكرة"
 
 #: app/[lang]/not-found.tsx
 msgid "Go to the home page"
@@ -261,6 +269,10 @@ msgstr "لم نتمكن من قراءة الصفحة 4 من هذا الملف. �
 #: app/[lang]/dev/ui/overlays/page.tsx
 msgid "We couldn't save your course."
 msgstr "لم نتمكن من حفظ مقررك."
+
+#: app/[lang]/dev/ui/page.tsx
+msgid "You've mastered 64% of what's on your midterm."
+msgstr "أتقنت 64% مما سيأتي في امتحانك النصفي."
 
 #: app/[lang]/dev/ui/overlays/page.tsx
 msgid "Your midterm is on 3 January. Your plan moves with it."
