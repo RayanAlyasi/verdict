@@ -13,27 +13,48 @@ async function openGlobe(page: Page) {
 }
 
 test("at 4× CPU throttling, the globe and background cause no long frames", async ({ page }) => {
-  const canvas = await openGlobe(page);
+  // Counted, not read back: reading a canvas is slow, so the test would trip over itself.
+  await page.addInitScript(() => {
+    const draw = CanvasRenderingContext2D.prototype.drawImage;
+    Object.assign(window, { draws: 0 });
+    CanvasRenderingContext2D.prototype.drawImage = function (
+      this: CanvasRenderingContext2D,
+      ...args: Parameters<typeof draw>
+    ) {
+      (window as unknown as { draws: number }).draws += 1;
+      return draw.apply(this, args);
+    } as typeof draw;
+  });
+  await openGlobe(page);
   const session = await page.context().newCDPSession(page);
   await session.send("Emulation.setCPUThrottlingRate", { rate: 4 });
-  const still = () => canvas.evaluate((element: HTMLCanvasElement) => element.toDataURL());
-  const before = await still();
-  const longFrames = await page.evaluate(
+  await page.waitForTimeout(1000);
+  const { longFrames, draws } = await page.evaluate(
     () =>
-      new Promise<number[]>((resolve) => {
-        const durations: number[] = [];
+      new Promise<{ longFrames: unknown[]; draws: number }>((resolve) => {
+        const count = () => (window as unknown as { draws: number }).draws;
+        const before = count();
+        const longFrames: unknown[] = [];
         const observer = new PerformanceObserver((list) => {
-          for (const entry of list.getEntries()) durations.push(entry.duration);
+          for (const entry of list.getEntries() as PerformanceEntry[] &
+            {
+              scripts?: { invoker: string; duration: number }[];
+            }[]) {
+            longFrames.push({
+              duration: Math.round(entry.duration),
+              scripts: entry.scripts?.map(({ invoker, duration }) => [invoker, duration]),
+            });
+          }
         });
         observer.observe({ type: "long-animation-frame" });
         setTimeout(() => {
           observer.disconnect();
-          resolve(durations);
+          resolve({ longFrames, draws: count() - before });
         }, 5000);
       }),
   );
   expect(longFrames).toEqual([]);
-  expect(await still(), "the globe was drawing throughout").not.toBe(before);
+  expect(draws, "the globe was drawing throughout").toBeGreaterThan(1000);
 });
 
 test("with reduced motion, nothing ambient runs and the globe is a still frame", async ({
