@@ -240,7 +240,7 @@ jobs:
           missing=()
           for name in "${required[@]}"; do [ -n "${!name:-}" ] || missing+=("$name"); done
           if [ "${#missing[@]}" -gt 0 ]; then echo "::error::Set these in the preview environment: ${missing[*]}"; exit 1; fi
-      - uses: ruby/setup-ruby@26e5b7d197ebf60545ee9667bcbace0be11ccaec # v1.334.0
+      - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
         if: steps.current.outputs.stale == 'false' && env.ACTION == 'deploy'
         with:
           ruby-version: "3.4"
@@ -251,7 +251,7 @@ jobs:
         run: bundle install
       - name: Join the private network
         if: steps.current.outputs.stale == 'false'
-        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4.2.0
+        uses: tailscale/github-action@99a8333667fff04fdd6cffb46dfd409f8329a7bf # v4.3.0
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           audience: ${{ secrets.TS_AUDIENCE }}
@@ -425,7 +425,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Join the private network
-        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4.2.0
+        uses: tailscale/github-action@99a8333667fff04fdd6cffb46dfd409f8329a7bf # v4.3.0
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           audience: ${{ secrets.TS_AUDIENCE }}
