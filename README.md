@@ -46,7 +46,7 @@ Next.js and React for the web app, FastAPI and Python for the API, PostgreSQL wi
 
 ## Getting started
 > [!IMPORTANT]
-> [Spec 000](specs/000-foundation.md) is still being built: the web app shows a placeholder until the app shell lands.
+> [Spec 000](specs/000-foundation.md) is still being built: the web app shows the app shell, with placeholders where later specs add features.
 
 Requirements: Node 26, pnpm 12 (`npm install -g pnpm@12.14.0`: Node 25 and later no longer include Corepack), Python 3.14, [uv](https://docs.astral.sh/uv/) and Docker.
 

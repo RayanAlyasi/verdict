@@ -1,9 +1,10 @@
+import { msg } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import { AskIcon } from "@/components/ui/icons";
 import { initLingui } from "@/lib/i18n";
-import { Placeholder, placeholderMetadata } from "../placeholder";
+import { pageMetadata, Placeholder } from "../placeholder";
 
-export const generateMetadata = () => placeholderMetadata("/ask");
+export const generateMetadata = () => pageMetadata("/ask", msg`Ask Verdict`);
 
 export default async function AskPage() {
   await initLingui();

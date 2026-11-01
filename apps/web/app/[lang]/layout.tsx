@@ -19,7 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
   await connection();
   return {
     metadataBase: new URL(process.env.WEB_URL ?? ""),
-    title: "Verdict",
+    title: { default: "Verdict", template: "%s · Verdict" },
     description: i18n._(msg`An exam coach built from your own course materials.`),
   };
 }

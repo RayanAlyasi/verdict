@@ -25,7 +25,8 @@ test("at 4× CPU throttling, the globe and background cause no long frames", asy
       return draw.apply(this, args);
     } as typeof draw;
   });
-  await openGlobe(page);
+  await page.goto("/en");
+  await page.waitForLoadState("networkidle");
   const session = await page.context().newCDPSession(page);
   await session.send("Emulation.setCPUThrottlingRate", { rate: 4 });
   await page.waitForTimeout(1000);

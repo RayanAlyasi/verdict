@@ -205,6 +205,13 @@ msgstr "Not now"
 msgid "Not started"
 msgstr "Not started"
 
+#: app/[lang]/(shell)/course/page.tsx
+#: app/[lang]/(shell)/page.tsx
+#: app/[lang]/(shell)/practice/page.tsx
+#: app/[lang]/(shell)/progress/page.tsx
+msgid "Opening"
+msgstr "Opening"
+
 #: app/[lang]/dev/ui/page.tsx
 msgid "Panels"
 msgstr "Panels"

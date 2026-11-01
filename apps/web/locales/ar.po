@@ -141,7 +141,7 @@ msgstr "بالتفصيل"
 #: app/[lang]/(shell)/page.tsx
 #: app/[lang]/dev/ui/page.tsx
 msgid "In progress"
-msgstr "قيد التقدّم"
+msgstr "قيد التعلّم"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Instructor"
@@ -194,7 +194,7 @@ msgstr "لا توجد مقررات بعد"
 #: app/[lang]/(shell)/ask/page.tsx
 #: app/[lang]/(shell)/profile/page.tsx
 msgid "Not here yet."
-msgstr "ليس جاهزًا بعد."
+msgstr "غير متاح بعد."
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Not now"
@@ -204,6 +204,13 @@ msgstr "ليس الآن"
 #: app/[lang]/dev/ui/page.tsx
 msgid "Not started"
 msgstr "لم يبدأ"
+
+#: app/[lang]/(shell)/course/page.tsx
+#: app/[lang]/(shell)/page.tsx
+#: app/[lang]/(shell)/practice/page.tsx
+#: app/[lang]/(shell)/progress/page.tsx
+msgid "Opening"
+msgstr "جارٍ الفتح"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Panels"
@@ -294,11 +301,11 @@ msgstr "انتقل إلى المحتوى"
 
 #: app/[lang]/(shell)/add-course/page.tsx
 msgid "Soon you can add a course here, with your slides, notes and past exams."
-msgstr "قريبًا يمكنك إضافة مقرر هنا، مع شرائحك وملاحظاتك وامتحاناتك السابقة."
+msgstr "ستتمكن قريبًا من إضافة مقرر هنا، مع شرائحك وملاحظاتك وامتحاناتك السابقة."
 
 #: app/[lang]/(shell)/ask/page.tsx
 msgid "Soon you can ask anything about your course here, and get answers from your own materials."
-msgstr "قريبًا يمكنك أن تسأل عن أي شيء في مقررك هنا، وتحصل على إجابات من موادك أنت."
+msgstr "ستتمكن قريبًا من السؤال عن أي شيء في مقررك هنا، والحصول على إجابات من ملفاتك نفسها."
 
 #: app/[lang]/(shell)/layout.tsx
 msgid "Source code"

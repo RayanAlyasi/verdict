@@ -1,5 +1,4 @@
 import { msg } from "@lingui/core/macro";
-import { connection } from "next/server";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/ui/AppShell";
 import { sourceCodeUrl } from "@/lib/environment";
@@ -7,8 +6,6 @@ import { initLingui } from "@/lib/i18n";
 
 export default async function ShellLayout({ children }: { children: ReactNode }) {
   const { i18n, locale } = await initLingui();
-  // At request time: a deployment's source address isn't part of the build.
-  await connection();
   return (
     <AppShell
       locale={locale}

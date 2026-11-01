@@ -1,13 +1,14 @@
+import { msg } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { ProgressIcon } from "@/components/ui/icons";
 import { initLingui } from "@/lib/i18n";
-import { Placeholder, placeholderMetadata } from "../placeholder";
+import { pageMetadata, Placeholder } from "../placeholder";
 
-export const generateMetadata = () => placeholderMetadata("/progress");
+export const generateMetadata = () => pageMetadata("/progress", msg`Progress`);
 
 export default async function ProgressPage() {
-  const { locale } = await initLingui();
+  const { i18n, locale } = await initLingui();
   return (
     <Placeholder
       title={<Trans>Progress</Trans>}
@@ -17,7 +18,7 @@ export default async function ProgressPage() {
       }
       icon={<ProgressIcon className="size-6" />}
       action={
-        <ButtonLink href={`/${locale}/add-course`}>
+        <ButtonLink href={`/${locale}/add-course`} pendingLabel={i18n._(msg`Opening`)}>
           <Trans>Add a course</Trans>
         </ButtonLink>
       }

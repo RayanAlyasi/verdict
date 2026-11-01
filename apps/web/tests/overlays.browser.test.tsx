@@ -193,3 +193,19 @@ test("a toast leaves by itself after its timeout; an error stays until dismissed
     .poll(() => toastQueue.visibleToasts.map((toast) => toast.content.title), { timeout: 3000 })
     .toEqual(["We couldn't save your course."]);
 });
+
+test("in the app shell on a phone, a toast sits above the bottom navigation", async () => {
+  render(
+    <div data-app-shell>
+      <Toasts closeLabel="Close" />
+    </div>,
+  );
+  expect(window.innerWidth).toBeLessThan(1024);
+  showToast({ title: "Course saved." });
+  await expect.element(page.getByText("Course saved.")).toBeVisible();
+  const toast = page.getByText("Course saved.").element();
+  const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+  expect(window.innerHeight - toast.getBoundingClientRect().bottom).toBeGreaterThan(
+    4.5625 * rootFontSize,
+  );
+});

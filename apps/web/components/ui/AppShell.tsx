@@ -11,6 +11,7 @@ import {
 } from "./icons";
 import { NavLink } from "./NavLink";
 import { PageTransition } from "./PageTransition";
+import { SkipLink } from "./SkipLink";
 import wordmark from "./verdict-wordmark.svg";
 
 export type ShellLabels = {
@@ -28,17 +29,19 @@ export type ShellLabels = {
 };
 
 const sideLink =
-  "flex min-h-touch-target items-center gap-3 overflow-hidden rounded-md px-3 text-small text-text-faint aria-[current=page]:bg-space-800 aria-[current=page]:font-semibold aria-[current=page]:text-text";
+  "flex min-h-touch-target items-center gap-3 overflow-hidden rounded-md px-3 text-small font-medium text-text-faint aria-[current=page]:bg-space-800 aria-[current=page]:font-semibold aria-[current=page]:text-text";
+
+const sideIcon = "size-5 group-aria-[current=page]:text-glow";
 
 // The bar on the open page's start edge, which mirrors in Arabic as a physical shadow wouldn't.
 const sideBar =
   "after:absolute after:inset-y-0 after:start-0 after:w-0.75 after:bg-glow after:opacity-0 aria-[current=page]:after:opacity-100";
 
 const sourceLink =
-  "inline-flex min-h-touch-target items-center rounded-sm px-3 text-caption text-text-faint underline underline-offset-2 outline-offset-2 hover:text-text focus-visible:outline-2 focus-visible:outline-focus";
+  "inline-flex min-h-touch-target items-center rounded-sm px-3 text-caption text-text-faint underline underline-offset-2 outline-offset-2 transition-transform duration-press ease-standard hover:text-text focus-visible:outline-2 focus-visible:outline-focus active:scale-97 motion-reduce:transition-none";
 
-// Every signed-in page: a sidebar from 1024px and bottom navigation below it, with both in the
-// HTML so the choice is made by CSS, not by JavaScript. Text arrives translated, as props.
+// The app's pages: a sidebar from 1024px and bottom navigation below it, with both in the HTML so
+// the choice is made by CSS, not by JavaScript. Text arrives translated, as props.
 export function AppShell({
   locale,
   labels,
@@ -59,19 +62,14 @@ export function AppShell({
   ];
   return (
     <div data-app-shell className="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
-      <a
-        href="#content"
-        className="fixed start-2 top-2 z-20 rounded-md bg-panel px-4 py-3 text-label text-text opacity-0 outline-offset-2 not-focus:pointer-events-none focus:opacity-100 focus-visible:outline-2 focus-visible:outline-focus"
-      >
-        {labels.skip}
-      </a>
+      <SkipLink>{labels.skip}</SkipLink>
 
       <aside className="sticky top-0 hidden h-dvh flex-col gap-6 overflow-y-auto border-e border-divider bg-space-950/80 px-4 py-6 lg:flex">
         <Image src={wordmark} alt="Verdict" className="ms-1.5 h-6.5 w-auto self-start" />
         <NavLink
           locale={locale}
           path="/ask"
-          className="flex min-h-touch-target items-center gap-3 rounded-control border border-panel-border-strong bg-panel px-3 text-small font-semibold text-text shadow-glow-soft"
+          className="flex min-h-touch-target items-center gap-3 rounded-control border border-panel-border-strong bg-panel px-3 text-small font-semibold text-text shadow-glow-soft aria-[current=page]:border-glow-border"
         >
           <AskIcon className="size-5 text-glow" />
           {labels.ask}
@@ -81,7 +79,7 @@ export function AppShell({
           <NavLink
             locale={locale}
             path="/add-course"
-            className="flex min-h-touch-target items-center gap-3 rounded-md px-3 text-small font-semibold text-glow"
+            className="flex min-h-touch-target items-center gap-3 rounded-md px-3 text-small font-semibold text-glow aria-[current=page]:bg-space-800"
           >
             <PlusIcon className="size-4" />
             {labels.addCourse}
@@ -90,14 +88,14 @@ export function AppShell({
         <nav aria-label={labels.main} className="flex flex-col gap-0.5">
           {sections.map(({ path, label, Icon }) => (
             <NavLink key={path} locale={locale} path={path} className={`${sideLink} ${sideBar}`}>
-              <Icon />
+              <Icon className={sideIcon} />
               {label}
             </NavLink>
           ))}
         </nav>
         <div className="mt-auto flex flex-col gap-1">
           <NavLink locale={locale} path="/profile" className={sideLink}>
-            <ProfileIcon />
+            <ProfileIcon className={sideIcon} />
             {labels.profile}
           </NavLink>
           <a href={sourceCodeUrl} className={sourceLink}>
@@ -106,7 +104,7 @@ export function AppShell({
         </div>
       </aside>
 
-      <div className="flex min-h-dvh min-w-0 flex-col pb-(--bottom-nav-height)">
+      <div className="flex min-h-dvh min-w-0 flex-col px-(--safe-inline) pb-(--bottom-nav-height)">
         <main id="content" tabIndex={-1} className="flex-1 outline-none">
           <PageTransition>{children}</PageTransition>
         </main>
@@ -119,7 +117,7 @@ export function AppShell({
 
       <nav
         aria-label={labels.main}
-        className="fixed inset-x-0 bottom-0 z-10 flex h-(--bottom-nav-height) border-t border-divider bg-space-900/90 px-[max(0.5rem,env(safe-area-inset-left),env(safe-area-inset-right))] pt-1 pb-[calc(0.625rem+env(safe-area-inset-bottom))] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-10 flex h-(--bottom-nav-height) border-t border-divider bg-space-900/90 px-[max(0.5rem,var(--safe-inline))] pt-1 pb-[calc(0.625rem+env(safe-area-inset-bottom))] lg:hidden"
       >
         {sections.map(({ path, label, Icon }) => (
           <NavLink

@@ -4,8 +4,13 @@ import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-// The four main pages in order: going to a later one moves forward, to an earlier one back.
+// The four main pages in order. Going to a later one moves forward and to an earlier one back, and
+// anything else (Ask Verdict, Profile) sits past them, so it opens forward and leaves back.
 const SECTIONS = ["", "/course", "/practice", "/progress"];
+const place = (path: string) => {
+  const index = SECTIONS.indexOf(path);
+  return index === -1 ? SECTIONS.length : index;
+};
 
 // Only shows on a slow connection: the delay keeps it from flickering on a fast one.
 function Pending() {
@@ -35,7 +40,7 @@ export function NavLink({
   children: ReactNode;
 }) {
   const current = usePathname().slice(`/${locale}`.length);
-  const direction = SECTIONS.indexOf(path) < SECTIONS.indexOf(current) ? "nav-back" : "nav-forward";
+  const direction = place(path) < place(current) ? "nav-back" : "nav-forward";
   return (
     <Link
       href={`/${locale}${path}`}
