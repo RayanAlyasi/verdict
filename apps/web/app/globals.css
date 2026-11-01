@@ -106,15 +106,16 @@
 
 @layer base {
   /* On phones the fixed bottom navigation sets how much room the page and toasts leave for it, and
-     keyboard focus is never scrolled behind it. The scrollbar's room is always kept, so the layout
-     doesn't jump between pages that scroll and pages that don't. A notch can be on either side, so
+     keyboard focus is never scrolled behind it. The scrollbar always shows, so the layout doesn't
+     jump between pages that scroll and pages that don't; scrollbar-gutter would do that too, but it
+     leaves fixed elements such as the sky short of the edge. A notch can be on either side, so
      --safe-inline clears the larger one on both. */
   :root {
     --bottom-nav-height: 0px;
     --page-direction: 1;
     --safe-inline: max(env(safe-area-inset-left), env(safe-area-inset-right));
     scroll-padding-block-end: var(--bottom-nav-height);
-    scrollbar-gutter: stable;
+    overflow-y: scroll;
   }
   :root[dir="rtl"] {
     --page-direction: -1;
