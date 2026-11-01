@@ -83,7 +83,8 @@ test("on a phone it's a sheet along the bottom; from 1024px a centred dialog", a
   await page.viewport(390, 844);
   await open(trigger);
   await expect.poll(() => Math.round(modal().getBoundingClientRect().bottom)).toBe(844);
-  expect(modal().getBoundingClientRect().width).toBe(390);
+  // The page's width, which is narrower than the window where scrollbars take up room.
+  expect(modal().getBoundingClientRect().width).toBe(document.documentElement.clientWidth);
   await userEvent.keyboard("{Escape}");
   await expect.poll(dialog).toBeNull();
 

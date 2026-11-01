@@ -96,7 +96,7 @@ test("the background covers the page, behind its content", async ({ page }) => {
     return {
       headingOnTop:
         document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) === heading,
-      covers: sky.width >= window.innerWidth && sky.height >= window.innerHeight,
+      covers: sky.width >= document.documentElement.clientWidth && sky.height >= window.innerHeight,
     };
   });
   expect(result).toEqual({ headingOnTop: true, covers: true });
