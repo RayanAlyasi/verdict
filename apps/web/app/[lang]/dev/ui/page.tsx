@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Globe } from "@/components/ui/Globe";
+import { GlobeLegend } from "@/components/ui/GlobeLegend";
 import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
 import { Light } from "@/components/ui/Light";
@@ -212,6 +214,24 @@ export default async function ComponentGallery() {
           completed={3}
           total={10}
         />
+      </Section>
+
+      <Section title={<Trans>Globe</Trans>}>
+        <div className="flex flex-col items-center gap-4">
+          <Globe mastered={0.64} inProgress={0.16} orbit className="max-w-82" />
+          <p className="text-center text-body text-text-muted">
+            <Trans>
+              You&apos;ve mastered <span className="font-semibold text-glow">64%</span> of
+              what&apos;s on your midterm.
+            </Trans>
+          </p>
+          <GlobeLegend
+            caption={i18n._(msg`Each light is one idea from your course`)}
+            mastered={i18n._(msg`Mastered`)}
+            progress={i18n._(msg`In progress`)}
+            notStarted={i18n._(msg`Not started`)}
+          />
+        </div>
       </Section>
 
       <Section title={<Trans>Loading</Trans>}>

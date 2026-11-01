@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { compile } from "tailwindcss";
 import { expect, test } from "vitest";
+import { NEBULA } from "../components/ui/SpaceBackground";
 import { themeCss } from "../scripts/tokens.mjs";
 
 const tokens = JSON.parse(
@@ -84,4 +85,12 @@ test("Arabic pages get the taller line heights, and only those styles change", (
 
 test("the committed theme matches the tokens", () => {
   expect(readFileSync(new URL("../app/theme.css", import.meta.url), "utf8")).toBe(css);
+});
+
+test("the nebula the canvas draws is the token's", () => {
+  const css = NEBULA.map(
+    ({ x, y, width, height, rgb, alpha }) =>
+      `radial-gradient(${width}% ${height}% at ${x}% ${y}%, rgba(${rgb},${alpha}), transparent 70%)`,
+  ).join(", ");
+  expect(css).toBe(tokens.background.nebula);
 });
