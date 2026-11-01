@@ -103,3 +103,78 @@
     text-shadow: none;
   }
 }
+
+@layer base {
+  /* On phones the fixed bottom navigation sets how much room the page and toasts leave for it, and
+     keyboard focus is never scrolled behind it. The scrollbar always shows, so the layout doesn't
+     jump between pages that scroll and pages that don't; scrollbar-gutter would do that too, but it
+     leaves fixed elements such as the sky short of the edge. A notch can be on either side, so
+     --safe-inline clears the larger one on both. */
+  :root {
+    --bottom-nav-height: 0px;
+    --page-direction: 1;
+    --safe-inline: max(env(safe-area-inset-left), env(safe-area-inset-right));
+    scroll-padding-block-end: var(--bottom-nav-height);
+    overflow-y: scroll;
+  }
+  :root[dir="rtl"] {
+    --page-direction: -1;
+  }
+  :root:has([data-app-shell]) {
+    @variant max-lg {
+      --bottom-nav-height: calc(4.5625rem + env(safe-area-inset-bottom));
+      --toast-offset: var(--bottom-nav-height);
+    }
+  }
+}
+
+/* Page transitions (components/ui/PageTransition.tsx): a fade plus an 8px slide in the direction of
+   travel, which mirrors in Arabic. Only the content takes part, so the sky behind it keeps moving.
+   React shrinks ::view-transition to nothing, which a right-to-left page anchors off screen, so the
+   content would vanish: this layer is held at full width, and cut off above the bottom navigation
+   so the pages can't cover it. The navigation still takes taps during the 320ms; the page doesn't. */
+@keyframes page-out {
+  to {
+    opacity: 0;
+    translate: calc(var(--page-slide) * var(--page-direction)) 0;
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    translate: calc(var(--page-slide) * var(--page-direction)) 0;
+  }
+}
+:root {
+  view-transition-name: none;
+}
+::view-transition {
+  width: 100% !important;
+  height: calc(100dvh - var(--bottom-nav-height)) !important;
+  overflow: clip;
+  pointer-events: none;
+}
+::view-transition-old(.nav-forward),
+::view-transition-new(.nav-back) {
+  --page-slide: -8px;
+}
+::view-transition-new(.nav-forward),
+::view-transition-old(.nav-back) {
+  --page-slide: 8px;
+}
+::view-transition-old(.nav-forward),
+::view-transition-old(.nav-back) {
+  animation: page-out var(--transition-duration-slow) var(--ease-standard) both;
+}
+::view-transition-new(.nav-forward),
+::view-transition-new(.nav-back) {
+  animation: page-in var(--transition-duration-slow) var(--ease-standard) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}

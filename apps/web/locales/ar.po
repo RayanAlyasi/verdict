@@ -15,6 +15,15 @@ msgstr "{question} من {questions}"
 msgid "9 of 12 midterm topics mastered."
 msgstr "أتقنت 9 من 12 موضوعًا من مواضيع الامتحان النصفي."
 
+#: app/[lang]/(shell)/add-course/page.tsx
+#: app/[lang]/(shell)/course/page.tsx
+#: app/[lang]/(shell)/layout.tsx
+#: app/[lang]/(shell)/page.tsx
+#: app/[lang]/(shell)/practice/page.tsx
+#: app/[lang]/(shell)/progress/page.tsx
+msgid "Add a course"
+msgstr "أضف مقررًا"
+
 #: app/[lang]/dev/ui/page.tsx
 msgid "Add a course and its files, and Verdict builds your study plan from them."
 msgstr "أضف مقررًا وملفاته، وسيبني Verdict خطة دراستك منها."
@@ -24,13 +33,17 @@ msgid "Add your first course"
 msgstr "أضف مقررك الأول"
 
 #: app/[lang]/layout.tsx
-#: app/[lang]/page.tsx
 msgid "An exam coach built from your own course materials."
 msgstr "مدرّب للامتحانات يعتمد على ملفات مقرراتك نفسها."
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "As it appears on your timetable."
 msgstr "كما يظهر في جدولك الدراسي."
+
+#: app/[lang]/(shell)/ask/page.tsx
+#: app/[lang]/(shell)/layout.tsx
+msgid "Ask Verdict"
+msgstr "اسأل Verdict"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Buttons"
@@ -50,6 +63,7 @@ msgstr "أزرار الاختيار"
 
 #: app/[lang]/dev/ui/overlays/page.tsx
 #: app/[lang]/dev/ui/page.tsx
+#: app/[lang]/layout.tsx
 msgid "Close"
 msgstr "إغلاق"
 
@@ -64,6 +78,11 @@ msgstr "المكوّنات"
 #: app/[lang]/dev/ui/page.tsx
 msgid "Continue"
 msgstr "متابعة"
+
+#: app/[lang]/(shell)/course/page.tsx
+#: app/[lang]/(shell)/layout.tsx
+msgid "Course"
+msgstr "المقرر"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Course code"
@@ -81,6 +100,7 @@ msgstr "حفظنا مقررك."
 msgid "Current question"
 msgstr "السؤال الحالي"
 
+#: app/[lang]/(shell)/page.tsx
 #: app/[lang]/dev/ui/page.tsx
 msgid "Each light is one idea from your course"
 msgstr "كل ضوء فكرة واحدة من مقررك"
@@ -118,9 +138,10 @@ msgstr "أزرار الأيقونات"
 msgid "In depth"
 msgstr "بالتفصيل"
 
+#: app/[lang]/(shell)/page.tsx
 #: app/[lang]/dev/ui/page.tsx
 msgid "In progress"
-msgstr "قيد التقدّم"
+msgstr "قيد التعلّم"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Instructor"
@@ -138,6 +159,11 @@ msgstr "التحميل"
 msgid "Loading your course"
 msgstr "جارٍ تحميل مقررك"
 
+#: app/[lang]/(shell)/layout.tsx
+msgid "Main"
+msgstr "القائمة الرئيسية"
+
+#: app/[lang]/(shell)/page.tsx
 #: app/[lang]/dev/ui/page.tsx
 msgid "Mastered"
 msgstr "متقَن"
@@ -150,17 +176,41 @@ msgstr "منوّع"
 msgid "Next: enzyme kinetics"
 msgstr "التالي: حركية الإنزيمات"
 
+#: app/[lang]/(shell)/course/page.tsx
+#: app/[lang]/(shell)/practice/page.tsx
+#: app/[lang]/(shell)/progress/page.tsx
+msgid "No course yet."
+msgstr "لا يوجد مقرر بعد."
+
+#: app/[lang]/(shell)/page.tsx
+msgid "No course yet. Add one and its ideas appear here as lights."
+msgstr "لا يوجد مقرر بعد. أضف مقررًا لتظهر أفكاره هنا على شكل أضواء."
+
 #: app/[lang]/dev/ui/page.tsx
 msgid "No courses yet"
 msgstr "لا توجد مقررات بعد"
+
+#: app/[lang]/(shell)/add-course/page.tsx
+#: app/[lang]/(shell)/ask/page.tsx
+#: app/[lang]/(shell)/profile/page.tsx
+msgid "Not here yet."
+msgstr "غير متاح بعد."
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Not now"
 msgstr "ليس الآن"
 
+#: app/[lang]/(shell)/page.tsx
 #: app/[lang]/dev/ui/page.tsx
 msgid "Not started"
 msgstr "لم يبدأ"
+
+#: app/[lang]/(shell)/course/page.tsx
+#: app/[lang]/(shell)/page.tsx
+#: app/[lang]/(shell)/practice/page.tsx
+#: app/[lang]/(shell)/progress/page.tsx
+msgid "Opening"
+msgstr "جارٍ الفتح"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Panels"
@@ -174,9 +224,28 @@ msgstr "امتحان سابق"
 msgid "Pick a date after today."
 msgstr "اختر تاريخًا بعد اليوم."
 
+#: app/[lang]/(shell)/layout.tsx
+#: app/[lang]/(shell)/practice/page.tsx
+msgid "Practice"
+msgstr "التدريب"
+
+#: app/[lang]/(shell)/practice/page.tsx
+msgid "Practice exams and quizzes will show here once you add a course."
+msgstr "ستظهر الامتحانات التجريبية والاختبارات القصيرة هنا بعد إضافة مقرر."
+
 #: app/[lang]/dev/ui/page.tsx
 msgid "Prediction exam"
 msgstr "امتحان متوقّع"
+
+#: app/[lang]/(shell)/layout.tsx
+#: app/[lang]/(shell)/profile/page.tsx
+msgid "Profile and settings"
+msgstr "الحساب والإعدادات"
+
+#: app/[lang]/(shell)/layout.tsx
+#: app/[lang]/(shell)/progress/page.tsx
+msgid "Progress"
+msgstr "التقدّم"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Question {question} of {questions}"
@@ -226,6 +295,22 @@ msgstr "ببساطة"
 msgid "Skip this question"
 msgstr "تخطَّ هذا السؤال"
 
+#: app/[lang]/(shell)/layout.tsx
+msgid "Skip to content"
+msgstr "انتقل إلى المحتوى"
+
+#: app/[lang]/(shell)/add-course/page.tsx
+msgid "Soon you can add a course here, with your slides, notes and past exams."
+msgstr "ستتمكن قريبًا من إضافة مقرر هنا، مع شرائحك وملاحظاتك وامتحاناتك السابقة."
+
+#: app/[lang]/(shell)/ask/page.tsx
+msgid "Soon you can ask anything about your course here, and get answers from your own materials."
+msgstr "ستتمكن قريبًا من السؤال عن أي شيء في مقررك هنا، والحصول على إجابات من ملفاتك نفسها."
+
+#: app/[lang]/(shell)/layout.tsx
+msgid "Source code"
+msgstr "الشيفرة المصدرية"
+
 #: app/[lang]/dev/ui/page.tsx
 msgid "Start today's session"
 msgstr "ابدأ جلسة اليوم"
@@ -241,6 +326,11 @@ msgstr "الإشعارات والنوافذ"
 #: app/[lang]/dev/ui/page.tsx
 msgid "Toasts and sheets are on their own page."
 msgstr "الإشعارات والنوافذ في صفحة خاصة بها."
+
+#: app/[lang]/(shell)/layout.tsx
+#: app/[lang]/(shell)/page.tsx
+msgid "Today"
+msgstr "اليوم"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Today's session, about 25 minutes."
@@ -278,6 +368,18 @@ msgstr "أتقنت <0>64%</0> مما سيأتي في امتحانك النصفي
 #~ msgid "You've mastered 64% of what's on your midterm."
 #~ msgstr "أتقنت 64% مما سيأتي في امتحانك النصفي."
 
+#: app/[lang]/(shell)/profile/page.tsx
+msgid "Your account and settings will show here once sign-in is ready."
+msgstr "سيظهر حسابك وإعداداتك هنا عندما يصبح تسجيل الدخول جاهزًا."
+
+#: app/[lang]/(shell)/layout.tsx
+msgid "Your courses"
+msgstr "مقرراتك"
+
+#: app/[lang]/(shell)/progress/page.tsx
+msgid "Your mastery, topic by topic, will show here once you add a course."
+msgstr "سيظهر مستوى إتقانك لكل موضوع هنا بعد إضافة مقرر."
+
 #: app/[lang]/dev/ui/overlays/page.tsx
 msgid "Your midterm is on 3 January. Your plan moves with it."
 msgstr "امتحانك النصفي في 3 يناير، وخطتك تتغيّر معه."
@@ -285,3 +387,7 @@ msgstr "امتحانك النصفي في 3 يناير، وخطتك تتغيّر 
 #: app/[lang]/dev/ui/overlays/page.tsx
 msgid "Your plan now starts on Monday."
 msgstr "خطتك تبدأ الآن يوم الاثنين."
+
+#: app/[lang]/(shell)/course/page.tsx
+msgid "Your topics and sources will show here once you add a course."
+msgstr "ستظهر مواضيعك ومصادرك هنا بعد إضافة مقرر."

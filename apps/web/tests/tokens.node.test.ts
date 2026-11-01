@@ -94,3 +94,10 @@ test("the nebula the canvas draws is the token's", () => {
   ).join(", ");
   expect(css).toBe(tokens.background.nebula);
 });
+
+test("the shell's wordmark is the brand's own file", () => {
+  const file = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
+  expect(file("../components/ui/verdict-wordmark.svg")).toBe(
+    file("../../../docs/brand/logo/verdict-wordmark-on-dark.svg"),
+  );
+});

@@ -15,6 +15,15 @@ msgstr "{question} of {questions}"
 msgid "9 of 12 midterm topics mastered."
 msgstr "9 of 12 midterm topics mastered."
 
+#: app/[lang]/(shell)/add-course/page.tsx
+#: app/[lang]/(shell)/course/page.tsx
+#: app/[lang]/(shell)/layout.tsx
+#: app/[lang]/(shell)/page.tsx
+#: app/[lang]/(shell)/practice/page.tsx
+#: app/[lang]/(shell)/progress/page.tsx
+msgid "Add a course"
+msgstr "Add a course"
+
 #: app/[lang]/dev/ui/page.tsx
 msgid "Add a course and its files, and Verdict builds your study plan from them."
 msgstr "Add a course and its files, and Verdict builds your study plan from them."
@@ -24,13 +33,17 @@ msgid "Add your first course"
 msgstr "Add your first course"
 
 #: app/[lang]/layout.tsx
-#: app/[lang]/page.tsx
 msgid "An exam coach built from your own course materials."
 msgstr "An exam coach built from your own course materials."
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "As it appears on your timetable."
 msgstr "As it appears on your timetable."
+
+#: app/[lang]/(shell)/ask/page.tsx
+#: app/[lang]/(shell)/layout.tsx
+msgid "Ask Verdict"
+msgstr "Ask Verdict"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Buttons"
@@ -50,6 +63,7 @@ msgstr "Chips"
 
 #: app/[lang]/dev/ui/overlays/page.tsx
 #: app/[lang]/dev/ui/page.tsx
+#: app/[lang]/layout.tsx
 msgid "Close"
 msgstr "Close"
 
@@ -64,6 +78,11 @@ msgstr "Components"
 #: app/[lang]/dev/ui/page.tsx
 msgid "Continue"
 msgstr "Continue"
+
+#: app/[lang]/(shell)/course/page.tsx
+#: app/[lang]/(shell)/layout.tsx
+msgid "Course"
+msgstr "Course"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Course code"
@@ -81,6 +100,7 @@ msgstr "Course saved."
 msgid "Current question"
 msgstr "Current question"
 
+#: app/[lang]/(shell)/page.tsx
 #: app/[lang]/dev/ui/page.tsx
 msgid "Each light is one idea from your course"
 msgstr "Each light is one idea from your course"
@@ -118,6 +138,7 @@ msgstr "Icon buttons"
 msgid "In depth"
 msgstr "In depth"
 
+#: app/[lang]/(shell)/page.tsx
 #: app/[lang]/dev/ui/page.tsx
 msgid "In progress"
 msgstr "In progress"
@@ -138,6 +159,11 @@ msgstr "Loading"
 msgid "Loading your course"
 msgstr "Loading your course"
 
+#: app/[lang]/(shell)/layout.tsx
+msgid "Main"
+msgstr "Main"
+
+#: app/[lang]/(shell)/page.tsx
 #: app/[lang]/dev/ui/page.tsx
 msgid "Mastered"
 msgstr "Mastered"
@@ -150,17 +176,41 @@ msgstr "Mixed"
 msgid "Next: enzyme kinetics"
 msgstr "Next: enzyme kinetics"
 
+#: app/[lang]/(shell)/course/page.tsx
+#: app/[lang]/(shell)/practice/page.tsx
+#: app/[lang]/(shell)/progress/page.tsx
+msgid "No course yet."
+msgstr "No course yet."
+
+#: app/[lang]/(shell)/page.tsx
+msgid "No course yet. Add one and its ideas appear here as lights."
+msgstr "No course yet. Add one and its ideas appear here as lights."
+
 #: app/[lang]/dev/ui/page.tsx
 msgid "No courses yet"
 msgstr "No courses yet"
+
+#: app/[lang]/(shell)/add-course/page.tsx
+#: app/[lang]/(shell)/ask/page.tsx
+#: app/[lang]/(shell)/profile/page.tsx
+msgid "Not here yet."
+msgstr "Not here yet."
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Not now"
 msgstr "Not now"
 
+#: app/[lang]/(shell)/page.tsx
 #: app/[lang]/dev/ui/page.tsx
 msgid "Not started"
 msgstr "Not started"
+
+#: app/[lang]/(shell)/course/page.tsx
+#: app/[lang]/(shell)/page.tsx
+#: app/[lang]/(shell)/practice/page.tsx
+#: app/[lang]/(shell)/progress/page.tsx
+msgid "Opening"
+msgstr "Opening"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Panels"
@@ -174,9 +224,28 @@ msgstr "Past paper"
 msgid "Pick a date after today."
 msgstr "Pick a date after today."
 
+#: app/[lang]/(shell)/layout.tsx
+#: app/[lang]/(shell)/practice/page.tsx
+msgid "Practice"
+msgstr "Practice"
+
+#: app/[lang]/(shell)/practice/page.tsx
+msgid "Practice exams and quizzes will show here once you add a course."
+msgstr "Practice exams and quizzes will show here once you add a course."
+
 #: app/[lang]/dev/ui/page.tsx
 msgid "Prediction exam"
 msgstr "Prediction exam"
+
+#: app/[lang]/(shell)/layout.tsx
+#: app/[lang]/(shell)/profile/page.tsx
+msgid "Profile and settings"
+msgstr "Profile and settings"
+
+#: app/[lang]/(shell)/layout.tsx
+#: app/[lang]/(shell)/progress/page.tsx
+msgid "Progress"
+msgstr "Progress"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Question {question} of {questions}"
@@ -226,6 +295,22 @@ msgstr "Simply"
 msgid "Skip this question"
 msgstr "Skip this question"
 
+#: app/[lang]/(shell)/layout.tsx
+msgid "Skip to content"
+msgstr "Skip to content"
+
+#: app/[lang]/(shell)/add-course/page.tsx
+msgid "Soon you can add a course here, with your slides, notes and past exams."
+msgstr "Soon you can add a course here, with your slides, notes and past exams."
+
+#: app/[lang]/(shell)/ask/page.tsx
+msgid "Soon you can ask anything about your course here, and get answers from your own materials."
+msgstr "Soon you can ask anything about your course here, and get answers from your own materials."
+
+#: app/[lang]/(shell)/layout.tsx
+msgid "Source code"
+msgstr "Source code"
+
 #: app/[lang]/dev/ui/page.tsx
 msgid "Start today's session"
 msgstr "Start today's session"
@@ -241,6 +326,11 @@ msgstr "Toasts and sheets"
 #: app/[lang]/dev/ui/page.tsx
 msgid "Toasts and sheets are on their own page."
 msgstr "Toasts and sheets are on their own page."
+
+#: app/[lang]/(shell)/layout.tsx
+#: app/[lang]/(shell)/page.tsx
+msgid "Today"
+msgstr "Today"
 
 #: app/[lang]/dev/ui/page.tsx
 msgid "Today's session, about 25 minutes."
@@ -278,6 +368,18 @@ msgstr "You've mastered <0>64%</0> of what's on your midterm."
 #~ msgid "You've mastered 64% of what's on your midterm."
 #~ msgstr "You've mastered 64% of what's on your midterm."
 
+#: app/[lang]/(shell)/profile/page.tsx
+msgid "Your account and settings will show here once sign-in is ready."
+msgstr "Your account and settings will show here once sign-in is ready."
+
+#: app/[lang]/(shell)/layout.tsx
+msgid "Your courses"
+msgstr "Your courses"
+
+#: app/[lang]/(shell)/progress/page.tsx
+msgid "Your mastery, topic by topic, will show here once you add a course."
+msgstr "Your mastery, topic by topic, will show here once you add a course."
+
 #: app/[lang]/dev/ui/overlays/page.tsx
 msgid "Your midterm is on 3 January. Your plan moves with it."
 msgstr "Your midterm is on 3 January. Your plan moves with it."
@@ -285,3 +387,7 @@ msgstr "Your midterm is on 3 January. Your plan moves with it."
 #: app/[lang]/dev/ui/overlays/page.tsx
 msgid "Your plan now starts on Monday."
 msgstr "Your plan now starts on Monday."
+
+#: app/[lang]/(shell)/course/page.tsx
+msgid "Your topics and sources will show here once you add a course."
+msgstr "Your topics and sources will show here once you add a course."

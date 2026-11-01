@@ -25,7 +25,8 @@ test("at 4× CPU throttling, the globe and background cause no long frames", asy
       return draw.apply(this, args);
     } as typeof draw;
   });
-  await openGlobe(page);
+  await page.goto("/en");
+  await page.waitForLoadState("networkidle");
   const session = await page.context().newCDPSession(page);
   await session.send("Emulation.setCPUThrottlingRate", { rate: 4 });
   await page.waitForTimeout(1000);
@@ -84,7 +85,7 @@ test("with reduced motion, nothing ambient runs and the globe is a still frame",
 
 test("the background covers the page, behind its content", async ({ page }) => {
   await page.goto("/en");
-  await expect(page.getByRole("heading", { name: "Verdict" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
   const result = await page.evaluate(() => {
     const background = document.querySelector<HTMLElement>("[data-testid=space-background]")!;
     // elementFromPoint skips anything that ignores the pointer, so it would prove nothing.
@@ -95,7 +96,7 @@ test("the background covers the page, behind its content", async ({ page }) => {
     return {
       headingOnTop:
         document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) === heading,
-      covers: sky.width >= window.innerWidth && sky.height >= window.innerHeight,
+      covers: sky.width >= document.documentElement.clientWidth && sky.height >= window.innerHeight,
     };
   });
   expect(result).toEqual({ headingOnTop: true, covers: true });

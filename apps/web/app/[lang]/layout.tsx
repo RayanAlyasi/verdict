@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import type { ReactNode } from "react";
 import { LocaleProvider } from "@/components/ui/LocaleProvider";
 import { SpaceBackground } from "@/components/ui/SpaceBackground";
+import { Toasts } from "@/components/ui/Toast";
 import { initLingui } from "@/lib/i18n";
 import { direction } from "@/lib/locales";
 import "../globals.css";
@@ -18,7 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
   await connection();
   return {
     metadataBase: new URL(process.env.WEB_URL ?? ""),
-    title: "Verdict",
+    title: { default: "Verdict", template: "%s · Verdict" },
     description: i18n._(msg`An exam coach built from your own course materials.`),
   };
 }
@@ -33,12 +34,15 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const { locale } = await initLingui();
+  const { i18n, locale } = await initLingui();
   return (
     <html lang={locale} dir={direction(locale)} className={readexPro.variable}>
       <body className="isolate bg-space-900 font-sans text-body text-text antialiased">
         <SpaceBackground />
-        <LocaleProvider locale={locale}>{children}</LocaleProvider>
+        <LocaleProvider locale={locale}>
+          {children}
+          <Toasts closeLabel={i18n._(msg`Close`)} />
+        </LocaleProvider>
       </body>
     </html>
   );
