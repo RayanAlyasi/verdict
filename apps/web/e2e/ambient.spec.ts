@@ -84,7 +84,7 @@ test("with reduced motion, nothing ambient runs and the globe is a still frame",
 
 test("the background covers the page, behind its content", async ({ page }) => {
   await page.goto("/en");
-  await expect(page.getByRole("heading", { name: "Verdict" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
   const result = await page.evaluate(() => {
     const background = document.querySelector<HTMLElement>("[data-testid=space-background]")!;
     // elementFromPoint skips anything that ignores the pointer, so it would prove nothing.

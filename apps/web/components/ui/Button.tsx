@@ -28,44 +28,53 @@ const PADDING = { lg: "px-8", md: "px-6", sm: "px-4" };
 export type PendingProps =
   { isPending?: false; pendingLabel?: undefined } | { isPending: boolean; pendingLabel: string };
 
-export type ButtonProps = Omit<AriaButtonProps, "children" | "className" | "isPending"> &
-  PendingProps & {
-    children: ReactNode;
-    variant?: keyof typeof VARIANTS;
-    size?: keyof typeof SIZES;
-    // The screen's one main action pulses softly (primary only).
-    pulse?: boolean;
-    className?: string;
-  };
+export type ButtonLook = {
+  variant?: keyof typeof VARIANTS;
+  size?: keyof typeof SIZES;
+  // The screen's one main action pulses softly (primary only).
+  pulse?: boolean;
+  className?: string;
+};
 
-export function Button({
-  children,
+// Shared with ButtonLink, so a link that looks like a button has every state a button has.
+export function buttonClasses({
   variant = "primary",
   size = "md",
   pulse = false,
-  pendingLabel,
   className = "",
+}: ButtonLook) {
+  return [
+    "group relative inline-flex min-w-11 select-none items-center justify-center gap-2 whitespace-nowrap rounded-pill",
+    VARIANTS[variant],
+    SIZES[size],
+    // A ghost button's text lines up with the content beside it.
+    variant === "ghost" ? "px-1" : PADDING[size],
+    pulse && variant === "primary"
+      ? "after:animate-glow-pulse motion-reduce:after:animate-none"
+      : "",
+    pressable,
+    focusRing,
+    hoverLayer,
+    disabled,
+    className,
+  ].join(" ");
+}
+
+export type ButtonProps = Omit<AriaButtonProps, "children" | "className" | "isPending"> &
+  PendingProps &
+  ButtonLook & { children: ReactNode };
+
+export function Button({
+  children,
+  variant,
+  size,
+  pulse,
+  pendingLabel,
+  className,
   ...props
 }: ButtonProps) {
   return (
-    <AriaButton
-      {...props}
-      className={[
-        "group relative inline-flex min-w-11 select-none items-center justify-center gap-2 whitespace-nowrap rounded-pill",
-        VARIANTS[variant],
-        SIZES[size],
-        // A ghost button's text lines up with the content beside it.
-        variant === "ghost" ? "px-1" : PADDING[size],
-        pulse && variant === "primary"
-          ? "after:animate-glow-pulse motion-reduce:after:animate-none"
-          : "",
-        pressable,
-        focusRing,
-        hoverLayer,
-        disabled,
-        className,
-      ].join(" ")}
-    >
+    <AriaButton {...props} className={buttonClasses({ variant, size, pulse, className })}>
       {({ isPending }) => (
         <>
           {/* Hidden by opacity, not removed, so the button keeps its size while it waits. */}

@@ -1,5 +1,5 @@
-import { expect, test } from "vitest";
-import { environmentProblems } from "../lib/environment";
+import { expect, test, vi } from "vitest";
+import { environmentProblems, sourceCodeUrl } from "../lib/environment";
 
 const SECRET = "do-not-print-me";
 const VALID = {
@@ -33,4 +33,12 @@ test("a problem never shows a value", () => {
   const problems = environmentProblems({ ...VALID, API_URL: "", WEB_URL: `${SECRET}.example` });
   expect(problems).toHaveLength(2);
   expect(problems.join("\n")).not.toContain(SECRET);
+});
+
+test("the source link defaults to this repository, and a fork can change it", () => {
+  vi.stubEnv("SOURCE_CODE_URL", "");
+  expect(sourceCodeUrl()).toBe("https://github.com/RayanAlyasi/verdict");
+  vi.stubEnv("SOURCE_CODE_URL", "https://example.com/fork");
+  expect(sourceCodeUrl()).toBe("https://example.com/fork");
+  vi.unstubAllEnvs();
 });

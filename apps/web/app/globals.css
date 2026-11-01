@@ -103,3 +103,66 @@
     text-shadow: none;
   }
 }
+
+@layer base {
+  /* On phones the fixed bottom navigation sets how much room the page and toasts leave for it. */
+  :root {
+    --bottom-nav-height: 0px;
+    --page-direction: 1;
+  }
+  :root[dir="rtl"] {
+    --page-direction: -1;
+  }
+  :root:has([data-app-shell]) {
+    @variant max-lg {
+      --bottom-nav-height: calc(4.5625rem + env(safe-area-inset-bottom));
+      --toast-offset: var(--bottom-nav-height);
+    }
+  }
+}
+
+/* Page transitions (components/ui/PageTransition.tsx): a fade plus an 8px slide in the direction of
+   travel, which mirrors in Arabic. Only the content takes part, so the sky behind it keeps moving
+   and the navigation stays put. Clicks pass through to the page while it runs. */
+@keyframes page-out {
+  to {
+    opacity: 0;
+    translate: calc(var(--page-slide) * var(--page-direction)) 0;
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    translate: calc(var(--page-slide) * var(--page-direction)) 0;
+  }
+}
+:root {
+  view-transition-name: none;
+}
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-old(.nav-forward),
+::view-transition-new(.nav-back) {
+  --page-slide: -8px;
+}
+::view-transition-new(.nav-forward),
+::view-transition-old(.nav-back) {
+  --page-slide: 8px;
+}
+::view-transition-old(.nav-forward),
+::view-transition-old(.nav-back) {
+  animation: page-out var(--transition-duration-slow) var(--ease-standard) both;
+}
+::view-transition-new(.nav-forward),
+::view-transition-new(.nav-back) {
+  animation: page-in var(--transition-duration-slow) var(--ease-standard) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}

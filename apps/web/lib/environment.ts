@@ -7,6 +7,11 @@ const REQUIRED = {
 };
 const ADDRESSES = new Set(["API_URL", "WEB_URL"]);
 
+// AGPL: where users get this deployment's source. A fork points it at its own repository.
+export function sourceCodeUrl(): string {
+  return process.env.SOURCE_CODE_URL?.trim() || "https://github.com/RayanAlyasi/verdict";
+}
+
 function isAddress(value: string): boolean {
   return URL.canParse(value) && ["http:", "https:"].includes(new URL(value).protocol);
 }

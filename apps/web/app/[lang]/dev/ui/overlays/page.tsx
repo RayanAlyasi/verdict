@@ -2,7 +2,6 @@ import { msg } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { Metadata } from "next";
 import { Input } from "@/components/ui/Input";
-import { Toasts } from "@/components/ui/Toast";
 import { initLingui } from "@/lib/i18n";
 import { alternates } from "@/lib/locales";
 import { Section, showGalleryOrNotFound } from "../gallery";
@@ -61,7 +60,6 @@ export default async function OverlayGallery() {
           <Input label={<Trans>Exam date</Trans>} defaultValue="2027-01-03" />
         </SheetDemo>
       </Section>
-      <Toasts closeLabel={close} />
     </main>
   );
 }
