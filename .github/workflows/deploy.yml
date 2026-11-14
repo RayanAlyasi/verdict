@@ -80,7 +80,7 @@ jobs:
           IMAGE: ${{ matrix.image }}
         run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}/${IMAGE}" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -169,7 +169,7 @@ jobs:
           missing=()
           for name in "${required[@]}"; do [ -n "${!name:-}" ] || missing+=("$name"); done
           if [ "${#missing[@]}" -gt 0 ]; then echo "::error::Set these in the $DEST environment: ${missing[*]}"; exit 1; fi
-      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -184,7 +184,7 @@ jobs:
             ref="ghcr.io/${GITHUB_REPOSITORY,,}/$image"
             docker buildx imagetools create --tag "$ref:$VERSION" "$ref:sha-$GITHUB_SHA"
           done
-      - uses: ruby/setup-ruby@26e5b7d197ebf60545ee9667bcbace0be11ccaec # v1.334.0
+      - uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
         with:
           ruby-version: "3.4"
       - name: Install Kamal from Gemfile.lock (each gem's checksum is verified)
@@ -194,7 +194,7 @@ jobs:
       # Only deploy.yml in this environment can join (the private hosting runbook), and its tag
       # reaches nothing but the server's SSH port. The tunnel carries web traffic only.
       - name: Join the private network
-        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4.2.0
+        uses: tailscale/github-action@064b10558093f38325e838ddea35486bdc6b1d5c # v4.4.0
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           audience: ${{ secrets.TS_AUDIENCE }}
