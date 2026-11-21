@@ -6,7 +6,7 @@
 
 # Named in the FROM line, not an ARG, so Dependabot can see it and propose updates. Previews run
 # this base image without WAL-G (config/deploy.api.preview-*.yml); keep their digest in step.
-FROM pgvector/pgvector:0.8.7-pg18-trixie@sha256:9d9c930220cb9bf2f956d10a8f909cf9973d9672ca0278aef2c1e6facccad2e0
+FROM pgvector/pgvector:0.8.7-pg18-trixie@sha256:ab49524d18df7200b74ac9a475e1db6297fc1eb57da4c214c63d10ecc4b754fa
 
 # Root certificates for the storage's HTTPS, curl for the heartbeats, jq for WAL-G's JSON.
 RUN apt-get update \
